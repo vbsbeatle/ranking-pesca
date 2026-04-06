@@ -6,29 +6,35 @@ export default function Home() {
   const [recordes, setRecordes] = useState<any[]>([])
   const [busca, setBusca] = useState('')
   const [filtroEspecie, setFiltroEspecie] = useState('Todas')
+  const [filtroSub, setFiltroSub] = useState('Todas')
   const [loading, setLoading] = useState(true)
+
+  // Mapeamento de subespécies para o filtro dinâmico
+  const subespeciesMap: any = {
+    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
+    "Dourado": ["Dourado comum", "Tabarana"],
+    "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
+    "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
+  }
 
   useEffect(() => {
     async function carregarRecordes() {
-      const { data } = await supabase
-        .from('recordes')
-        .select('*')
-        .order('tamanho_cm', { ascending: false })
+      const { data } = await supabase.from('recordes').select('*').order('tamanho_cm', { ascending: false })
       if (data) setRecordes(data)
       setLoading(false)
     }
     carregarRecordes()
   }, [])
 
-  // 1. Filtrar recordes com base na busca do usuário
+  // Lógica de Filtro Combinado
   const dadosFiltrados = recordes.filter(r => {
     const termo = busca.toLowerCase()
     const bateBusca = r.nome_pescador.toLowerCase().includes(termo) || r.cidade.toLowerCase().includes(termo)
     const bateEspecie = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
-    return bateBusca && bateEspecie
+    const bateSub = filtroSub === 'Todas' || r.subespecie === filtroSub
+    return bateBusca && bateEspecie && bateSub
   })
 
-  // 2. Agrupar categorias que sobraram após o filtro
   const categoriasUnicas = Array.from(new Set(dadosFiltrados.map(r => `${r.grupo_especie}|${r.modalidade_tipo}`)))
 
   return (
@@ -39,38 +45,50 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
-        {/* BARRA DE BUSCA RESTAURADA */}
-        <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-12 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input 
-            type="text" 
-            placeholder="🔍 Nome do Pescador ou Cidade..." 
-            className="p-3 bg-gray-50 border-2 rounded-lg outline-none focus:border-yellow-400 font-medium"
-            onChange={(e) => setBusca(e.target.value)}
-          />
-          <select 
-            onChange={(e) => setFiltroEspecie(e.target.value)}
-            className="p-3 bg-gray-50 border-2 rounded-lg outline-none focus:border-yellow-400 font-bold text-gray-700"
-          >
-            <option value="Todas">Todas as Espécies</option>
-            <option value="Tucunaré">Tucunaré</option>
-            <option value="Dourado">Dourado</option>
-            <option value="Traíra">Traíra</option>
-            <option value="Trairão">Trairão</option>
-          </select>
+        {/* BUSCA AVANÇADA */}
+        <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-12 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <input 
+              type="text" 
+              placeholder="🔍 Nome ou Cidade..." 
+              className="p-3 bg-gray-50 border-2 rounded-lg outline-none focus:border-yellow-400 font-medium"
+              onChange={(e) => setBusca(e.target.value)}
+            />
+            
+            <select 
+              onChange={(e) => { setFiltroEspecie(e.target.value); setFiltroSub('Todas'); }}
+              className="p-3 bg-gray-50 border-2 rounded-lg outline-none focus:border-yellow-400 font-bold"
+            >
+              <option value="Todas">Todas as Espécies</option>
+              {Object.keys(subespeciesMap).map(esp => <option key={esp} value={esp}>{esp}</option>)}
+            </select>
+
+            {/* Filtro de Subespécie só aparece se uma espécie for selecionada */}
+            <select 
+              disabled={filtroEspecie === 'Todas'}
+              onChange={(e) => setFiltroSub(e.target.value)}
+              className={`p-3 border-2 rounded-lg outline-none font-bold ${filtroEspecie === 'Todas' ? 'bg-gray-200 text-gray-400' : 'bg-gray-50 border-yellow-400'}`}
+            >
+              <option value="Todas">Subespécie (Todas)</option>
+              {filtroEspecie !== 'Todas' && subespeciesMap[filtroEspecie].map((s: string) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
         </section>
 
+        {/* RANKING (PERSONAL BEST) */}
         {loading ? (
-          <div className="text-center py-20 font-black text-gray-400 animate-pulse uppercase">Carregando Ranking...</div>
+          <div className="text-center py-20 font-black text-gray-400 animate-pulse uppercase">Carregando...</div>
         ) : (
           <div className="space-y-16">
             {categoriasUnicas.map((catKey) => {
               const [grupo, modalidade] = catKey.split('|')
-              
-              // Pegar peixes da categoria e manter apenas o Personal Best de cada um
               const peixesDaCat = dadosFiltrados.filter(r => r.grupo_especie === grupo && r.modalidade_tipo === modalidade)
+              
+              // Lógica de PB: Apenas o maior de cada pescador
               const rankingPB: any[] = []
               const pescadoresVistos = new Set()
-
               peixesDaCat.forEach(p => {
                 if (!pescadoresVistos.has(p.nome_pescador)) {
                   rankingPB.push(p)
@@ -81,7 +99,7 @@ export default function Home() {
               return (
                 <section key={catKey} className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg] shadow-lg">
+                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg]">
                       {grupo} <span className="text-white opacity-50 ml-2 text-sm">{modalidade}</span>
                     </h2>
                     <div className="flex-1 h-1 bg-yellow-400"></div>
@@ -89,22 +107,18 @@ export default function Home() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {rankingPB.map((item, index) => (
-                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 transition-all hover:translate-y-[-5px] ${index === 0 ? 'border-yellow-400 ring-4 ring-yellow-400/20' : 'border-gray-100'}`}>
+                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 ${index === 0 ? 'border-yellow-400' : 'border-gray-100'}`}>
                         <div className="relative h-56 bg-gray-200">
-                          <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Captura" />
+                          <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Peixe" />
                           <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-4 py-1 rounded-full font-black text-xl border-2 border-yellow-400 shadow-2xl">
                             {item.tamanho_cm}cm
                           </div>
                         </div>
                         <div className="p-6">
-                          {/* LINK CORRIGIDO PARA O PERFIL */}
-                          <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-2xl font-black uppercase italic hover:text-yellow-600 transition-colors block underline decoration-yellow-400 underline-offset-4">
+                          <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-2xl font-black uppercase italic hover:text-yellow-600 transition-colors block underline decoration-yellow-400">
                             {item.nome_pescador}
                           </a>
-                          <div className="mt-4 pt-3 border-t flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase">
-                            <span>{item.subespecie}</span>
-                            <span>📍 {item.cidade}</span>
-                          </div>
+                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-4">Subespécie: {item.subespecie}</p>
                         </div>
                       </div>
                     ))}
