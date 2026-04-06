@@ -1,129 +1,159 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function AdminPage() {
+  const [aba, setAba] = useState('pescador') // 'pescador' ou 'captura'
+  const [pescadores, setPescadores] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
 
-  // Sua lista oficial de espécies e subespécies
   const especiesData: any = {
     "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
     "Dourado": ["Dourado comum", "Tabarana"],
     "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
   }
-
   const [grupo, setGrupo] = useState("Tucunaré")
 
-  async function handleSubmit(e: any) {
+  useEffect(() => {
+    carregarPescadores()
+  }, [])
+
+  async function carregarPescadores() {
+    const { data } = await supabase.from('pescadores').select('*').order('nome_completo')
+    if (data) setPescadores(data)
+  }
+
+  // FUNÇÃO 1: CADASTRAR PESCADOR
+  async function handlePescador(e: any) {
     e.preventDefault()
     setLoading(true)
-    setMsg('Processando recorde...')
-
     const form = e.target
-    const fileCaptura = form.foto_captura.files[0]
-    const fileMedicao = form.foto_medicao.files[0]
-
+    const file = form.foto.files[0]
+    
     try {
-      // 1. Upload da Foto de Captura
-      const nameCap = `${Date.now()}-captura`
-      const { data: dataCap, error: errCap } = await supabase.storage.from('fotos-pesca').upload(nameCap, fileCaptura)
-      if (errCap) throw errCap
+      const fileName = `${Date.now()}-perfil`
+      await supabase.storage.from('fotos-pesca').upload(fileName, file)
+      const urlFoto = supabase.storage.from('fotos-pesca').getPublicUrl(fileName).data.publicUrl
 
-      // 2. Upload da Foto de Medição
-      const nameMed = `${Date.now()}-medicao`
-      const { data: dataMed, error: errMed } = await supabase.storage.from('fotos-pesca').upload(nameMed, fileMedicao)
-      if (errMed) throw errMed
+      await supabase.from('pescadores').insert([{
+        nome_completo: form.nome.value,
+        cidade: form.cidade.value,
+        url_foto: urlFoto
+      }])
+      setMsg('Pescador cadastrado!')
+      form.reset()
+      carregarPescadores()
+    } catch (err) { setMsg('Erro ao cadastrar') }
+    setLoading(false)
+  }
 
-      // 3. Pegar as URLs públicas das fotos
-      const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nameCap).data.publicUrl
-      const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nameMed).data.publicUrl
+  // FUNÇÃO 2: CADASTRAR CAPTURA
+  async function handleCaptura(e: any) {
+    e.preventDefault()
+    setLoading(true)
+    const form = e.target
+    try {
+      // Upload Fotos
+      const fCap = form.f_cap.files[0]
+      const fMed = form.f_med.files[0]
+      const nCap = `${Date.now()}-c`; const nMed = `${Date.now()}-m`
+      await supabase.storage.from('fotos-pesca').upload(nCap, fCap)
+      await supabase.storage.from('fotos-pesca').upload(nMed, fMed)
+      
+      const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nCap).data.publicUrl
+      const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nMed).data.publicUrl
 
-      // 4. Salvar os dados no Banco
-      const { error: errDb } = await supabase.from('recordes').insert([{
-        nome_pescador: form.pescador.value,
+      // Busca dados do pescador selecionado para manter compatibilidade
+      const pSel = pescadores.find(p => p.id === form.pescador_id.value)
+
+      await supabase.from('recordes').insert([{
+        pescador_id: form.pescador_id.value,
+        nome_pescador: pSel.nome_completo, // Mantido para o ranking antigo funcionar
         grupo_especie: grupo,
         subespecie: form.subespecie.value,
-        cidade: form.cidade.value,
-        estado: form.estado.value,
         tamanho_cm: parseFloat(form.tamanho.value),
-        modalidade_tipo: form.modalidade_tipo.value,
-        modalidade_ambiente: form.ambiente.value,
+        cidade: pSel.cidade,
+        estado: "MG", // Pode ajustar
+        modalidade_tipo: form.modalidade.value,
+        modalidade_ambiente: "Rio/Lago",
+        tipo_pescaria: form.tipo_pescaria.value,
+        carretilha: form.carretilha.value,
+        vara: form.vara.value,
+        isca: form.isca.value,
         url_foto_captura: urlCap,
         url_foto_medicao: urlMed,
-        nome_cientifico: "Registro Oficial" // Podemos refinar isso depois
+        nome_cientifico: "Registro"
       }])
-
-      if (errDb) throw errDb
-
-      setMsg('✅ RECORDE REGISTRADO COM SUCESSO!')
+      setMsg('Captura registrada!')
       form.reset()
-    } catch (error: any) {
-      setMsg('❌ Erro: ' + error.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setMsg('Erro no registro') }
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 md:p-8">
-      <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-lg overflow-hidden border-b-8 border-yellow-400">
-        <header className="bg-black text-yellow-400 p-6 flex justify-between items-center">
-          <h1 className="text-xl font-black uppercase italic">Novo Recorde</h1>
-          <span className="text-xs bg-yellow-400 text-black px-2 py-1 font-bold rounded">ADMIN</span>
-        </header>
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border-b-8 border-yellow-400">
+        <div className="flex bg-black">
+          <button onClick={() => setAba('pescador')} className={`flex-1 p-4 font-black uppercase italic ${aba === 'pescador' ? 'bg-yellow-400 text-black' : 'text-white'}`}>1. Novo Pescador</button>
+          <button onClick={() => setAba('captura')} className={`flex-1 p-4 font-black uppercase italic ${aba === 'captura' ? 'bg-yellow-400 text-black' : 'text-white'}`}>2. Nova Captura</button>
+        </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="pescador" placeholder="Nome do Pescador" required className="p-2 border-2 rounded outline-none focus:border-yellow-400" />
-            <input name="tamanho" type="number" step="0.1" placeholder="Tamanho (cm)" required className="p-2 border-2 rounded outline-none focus:border-yellow-400" />
-          </div>
+        <div className="p-6">
+          {aba === 'pescador' ? (
+            <form onSubmit={handlePescador} className="space-y-4">
+              <input name="nome" placeholder="Nome Completo" required className="w-full p-3 border-2 rounded" />
+              <input name="cidade" placeholder="Cidade/Estado" required className="w-full p-3 border-2 rounded" />
+              <label className="block text-xs font-bold text-gray-400 uppercase">Foto do Pescador</label>
+              <input name="foto" type="file" accept="image/*" required className="w-full" />
+              <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-bold rounded uppercase">{loading ? 'Salvando...' : 'Cadastrar Membro'}</button>
+            </form>
+          ) : (
+            <form onSubmit={handleCaptura} className="space-y-4">
+              <select name="pescador_id" required className="w-full p-3 border-2 rounded font-bold">
+                <option value="">Selecione o Pescador</option>
+                {pescadores.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
+              </select>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="p-3 border-2 rounded">
+                  {Object.keys(especiesData).map(e => <option key={e} value={e}>{e}</option>)}
+                </select>
+                <select name="subespecie" className="p-3 border-2 rounded">
+                  {especiesData[grupo].map((s:any) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="p-2 border-2 rounded">
-              {Object.keys(especiesData).map(e => <option key={e} value={e}>{e}</option>)}
-            </select>
-            <select name="subespecie" className="p-2 border-2 rounded">
-              {especiesData[grupo].map((s: string) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <input name="tamanho" type="number" step="0.1" placeholder="Tamanho (cm)" required className="p-3 border-2 rounded" />
+                <select name="modalidade" className="p-3 border-2 rounded">
+                  <option value="Absoluto">Absoluto</option>
+                  <option value="Privado">Privado</option>
+                </select>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input name="cidade" placeholder="Cidade" required className="p-2 border-2 rounded" />
-            <input name="estado" placeholder="Estado (Ex: AM)" required className="p-2 border-2 rounded" />
-          </div>
+              <div className="p-4 bg-gray-50 rounded-lg border-2 border-dashed space-y-3">
+                <h3 className="font-bold text-xs uppercase text-gray-400">Equipamento e Estilo</h3>
+                <select name="tipo_pescaria" className="w-full p-2 border rounded">
+                  <option value="Barranco">Barranco</option>
+                  <option value="Embarcado">Embarcado</option>
+                </select>
+                <input name="carretilha" placeholder="Carretilha" className="w-full p-2 border rounded" />
+                <input name="vara" placeholder="Vara" className="w-full p-2 border rounded" />
+                <input name="isca" placeholder="Isca Utilizada" className="w-full p-2 border rounded" />
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <select name="modalidade_tipo" className="p-2 border-2 rounded">
-              <option value="Absoluto">Absoluto</option>
-              <option value="Privado">Privado</option>
-            </select>
-            <select name="ambiente" className="p-2 border-2 rounded">
-              <option value="Rios">Rios</option>
-              <option value="Lagos e Represas">Lagos e Represas</option>
-              <option value="Pesqueiros">Pesqueiros</option>
-              <option value="Açudes/Fazendas">Açudes/Fazendas</option>
-            </select>
-          </div>
+              <div className="grid grid-cols-2 gap-4 text-xs font-bold uppercase text-gray-400">
+                <div>Foto Peixe <input name="f_cap" type="file" required className="mt-1" /></div>
+                <div>Foto Medida <input name="f_med" type="file" required className="mt-1" /></div>
+              </div>
 
-          <div className="space-y-2 border-t pt-4">
-            <label className="text-xs font-bold text-gray-500 uppercase">Foto da Captura</label>
-            <input name="foto_captura" type="file" accept="image/*" required className="w-full text-sm" />
-            
-            <label className="text-xs font-bold text-gray-500 uppercase block mt-2">Foto da Medição</label>
-            <input name="foto_medicao" type="file" accept="image/*" required className="w-full text-sm" />
-          </div>
-
-          <button 
-            disabled={loading}
-            className="w-full bg-black text-yellow-400 font-black py-4 rounded uppercase hover:bg-gray-900 transition"
-          >
-            {loading ? 'ENVIANDO...' : 'REGISTRAR RECORDE'}
-          </button>
-
-          {msg && <div className="p-3 bg-gray-100 text-center font-bold text-sm border-2 border-black">{msg}</div>}
-        </form>
+              <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-bold rounded uppercase">{loading ? 'Registrando...' : 'Salvar Captura'}</button>
+            </form>
+          )}
+          {msg && <p className="mt-4 text-center font-bold text-sm">{msg}</p>}
+        </div>
       </div>
     </div>
   )
