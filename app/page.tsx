@@ -9,7 +9,6 @@ export default function Home() {
   const [filtroSub, setFiltroSub] = useState('Todas')
   const [loading, setLoading] = useState(true)
 
-  // Mapeamento de subespécies para o filtro dinâmico
   const subespeciesMap: any = {
     "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
     "Dourado": ["Dourado comum", "Tabarana"],
@@ -26,7 +25,6 @@ export default function Home() {
     carregarRecordes()
   }, [])
 
-  // Lógica de Filtro Combinado
   const dadosFiltrados = recordes.filter(r => {
     const termo = busca.toLowerCase()
     const bateBusca = r.nome_pescador.toLowerCase().includes(termo) || r.cidade.toLowerCase().includes(termo)
@@ -63,7 +61,6 @@ export default function Home() {
               {Object.keys(subespeciesMap).map(esp => <option key={esp} value={esp}>{esp}</option>)}
             </select>
 
-            {/* Filtro de Subespécie só aparece se uma espécie for selecionada */}
             <select 
               disabled={filtroEspecie === 'Todas'}
               onChange={(e) => setFiltroSub(e.target.value)}
@@ -74,6 +71,9 @@ export default function Home() {
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
+          </div>
+          <div className="text-center">
+             <a href="/ranking-lista" className="text-xs font-bold text-gray-400 hover:text-black transition-colors uppercase underline">Ver Ranking em Lista (Tabela)</a>
           </div>
         </section>
 
@@ -86,7 +86,6 @@ export default function Home() {
               const [grupo, modalidade] = catKey.split('|')
               const peixesDaCat = dadosFiltrados.filter(r => r.grupo_especie === grupo && r.modalidade_tipo === modalidade)
               
-              // Lógica de PB: Apenas o maior de cada pescador
               const rankingPB: any[] = []
               const pescadoresVistos = new Set()
               peixesDaCat.forEach(p => {
@@ -99,7 +98,7 @@ export default function Home() {
               return (
                 <section key={catKey} className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg]">
+                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg] shadow-lg">
                       {grupo} <span className="text-white opacity-50 ml-2 text-sm">{modalidade}</span>
                     </h2>
                     <div className="flex-1 h-1 bg-yellow-400"></div>
@@ -107,18 +106,36 @@ export default function Home() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {rankingPB.map((item, index) => (
-                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 ${index === 0 ? 'border-yellow-400' : 'border-gray-100'}`}>
+                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 transition-transform hover:scale-[1.01] ${index === 0 ? 'border-yellow-400 ring-4 ring-yellow-400/10' : 'border-gray-100'}`}>
                         <div className="relative h-56 bg-gray-200">
                           <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Peixe" />
                           <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-4 py-1 rounded-full font-black text-xl border-2 border-yellow-400 shadow-2xl">
                             {item.tamanho_cm}cm
                           </div>
                         </div>
+
                         <div className="p-6">
-                          <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-2xl font-black uppercase italic hover:text-yellow-600 transition-colors block underline decoration-yellow-400">
+                          {/* NOVO LAYOUT: ESPÉCIE E SUBESPÉCIE ABAIXO */}
+                          <div className="flex flex-col mb-4">
+                             <span className="text-xl font-black uppercase italic leading-none">{item.grupo_especie}</span>
+                             <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-tighter mt-1">
+                               {item.subespecie}
+                             </span>
+                          </div>
+
+                          <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-lg font-bold uppercase hover:text-yellow-600 transition-colors block border-t pt-2 border-gray-100">
                             {item.nome_pescador}
                           </a>
-                          <p className="text-[10px] font-bold text-gray-400 uppercase mt-4">Subespécie: {item.subespecie}</p>
+
+                          <div className="flex justify-between items-center mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                             <span>{item.modalidade_tipo}</span>
+                             <span>📍 {item.cidade}</span>
+                          </div>
+
+                          {/* LINK PARA PÁGINA DA CAPTURA (Fase 4) */}
+                          <a href={`/captura/${item.id}`} className="mt-4 block text-center bg-gray-50 text-gray-400 py-2 rounded font-bold text-[9px] hover:bg-black hover:text-yellow-400 transition-colors">
+                            DETALHES E EQUIPAMENTO
+                          </a>
                         </div>
                       </div>
                     ))}
