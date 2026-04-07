@@ -43,7 +43,13 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
-        {/* BUSCA AVANÇADA */}
+        
+        <div className="flex justify-end mb-4">
+          <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-2 rounded-full font-black uppercase italic text-xs shadow-lg hover:bg-black hover:text-yellow-400 transition-all border-2 border-black">
+            📊 Ver Ranking em Tabela
+          </a>
+        </div>
+
         <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-12 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <input 
@@ -72,12 +78,8 @@ export default function Home() {
               ))}
             </select>
           </div>
-          <div className="text-center">
-             <a href="/ranking-lista" className="text-xs font-bold text-gray-400 hover:text-black transition-colors uppercase underline">Ver Ranking em Lista (Tabela)</a>
-          </div>
         </section>
 
-        {/* RANKING (PERSONAL BEST) */}
         {loading ? (
           <div className="text-center py-20 font-black text-gray-400 animate-pulse uppercase">Carregando...</div>
         ) : (
@@ -98,7 +100,7 @@ export default function Home() {
               return (
                 <section key={catKey} className="space-y-6">
                   <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg] shadow-lg">
+                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg]">
                       {grupo} <span className="text-white opacity-50 ml-2 text-sm">{modalidade}</span>
                     </h2>
                     <div className="flex-1 h-1 bg-yellow-400"></div>
@@ -113,42 +115,3 @@ export default function Home() {
                             {item.tamanho_cm}cm
                           </div>
                         </div>
-
-                        <div className="p-6">
-                          {/* NOVO LAYOUT: ESPÉCIE E SUBESPÉCIE ABAIXO */}
-                          <div className="flex flex-col mb-4">
-                             <span className="text-xl font-black uppercase italic leading-none">{item.grupo_especie}</span>
-                             <span className="text-[10px] font-bold text-yellow-600 uppercase tracking-tighter mt-1">
-                               {item.subespecie}
-                             </span>
-                          </div>
-
-                          <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-lg font-bold uppercase hover:text-yellow-600 transition-colors block border-t pt-2 border-gray-100">
-                            {item.nome_pescador}
-                          </a>
-
-                          <div className="flex justify-between items-center mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                             <span>{item.modalidade_tipo}</span>
-                             <span>📍 {item.cidade}</span>
-                          </div>
-
-                          {/* LINK PARA PÁGINA DA CAPTURA (Fase 4) */}
-                          <a href={`/captura/${item.id}`} className="mt-4 block text-center bg-gray-50 text-gray-400 py-2 rounded font-bold text-[9px] hover:bg-black hover:text-yellow-400 transition-colors">
-                            DETALHES E EQUIPAMENTO
-                          </a>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )
-            })}
-          </div>
-        )}
-      </main>
-      <footer className="bg-black text-gray-600 py-12 text-center text-[10px] font-bold uppercase tracking-[0.3em]">
-        © 2026 Trilhas do Rio Fishing Team
-      </footer>
-    </div>
-  )
-}
