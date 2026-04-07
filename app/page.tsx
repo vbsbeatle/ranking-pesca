@@ -44,10 +44,30 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       {/* CABEÇALHO */}
-      <header className="bg-black text-yellow-400 py-12 px-4 border-b-8 border-yellow-400 text-center shadow-2xl">
-        <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter">Hall da Fama</h1>
-        <p className="mt-2 text-white font-bold tracking-widest opacity-80 uppercase text-[10px]">Trilhas do Rio Fishing Team</p>
-      </header>
+     <header className="bg-black text-yellow-400 py-10 px-4 border-b-8 border-yellow-400 shadow-2xl">
+  <div className="max-w-6xl mx-auto flex flex-col items-center justify-center">
+    
+    {/* LOGO CENTRALIZADA */}
+    <div className="relative group cursor-pointer">
+      <img 
+        src="/logo-tr.jpg" 
+        alt="Trilhas do Rio Pesca Esportiva" 
+        className="h-48 md:h-64 w-auto transition-transform duration-500 group-hover:scale-105" 
+      />
+      {/* BRILHO ATRÁS DA LOGO (OPCIONAL PARA ESTILO) */}
+      <div className="absolute inset-0 bg-yellow-400/10 blur-3xl -z-10 rounded-full"></div>
+    </div>
+
+    {/* SUBTÍTULO DISCRETO */}
+    <div className="mt-4 text-center">
+      <h2 className="text-white font-black uppercase italic tracking-[0.4em] text-[10px] opacity-60">
+        Ranking de Recordes Oficiais
+      </h2>
+      <div className="h-1 w-12 bg-yellow-400 mx-auto mt-2"></div>
+    </div>
+
+  </div>
+</header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
         <div className="flex justify-end mb-4">
