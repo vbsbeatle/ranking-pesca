@@ -18,21 +18,35 @@ export default function Home() {
 
   useEffect(() => {
     async function carregarRecordes() {
-      const { data } = await supabase.from('recordes').select('*').order('tamanho_cm', { ascending: false })
-      if (data) setRecordes(data)
-      setLoading(false)
+      try {
+        const { data } = await supabase
+          .from('recordes')
+          .select('*')
+          .order('tamanho_cm', { ascending: false })
+        if (data) setRecordes(data)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
     }
     carregarRecordes()
   }, [])
 
+  // Lógica de Filtro
   const dadosFiltrados = recordes.filter(r => {
     const termo = busca.toLowerCase()
-    const bateBusca = r.nome_pescador.toLowerCase().includes(termo) || r.cidade.toLowerCase().includes(termo)
+    const nomeP = r.nome_pescador?.toLowerCase() || ''
+    const cidadeP = r.cidade?.toLowerCase() || ''
+    
+    const bateBusca = nomeP.includes(termo) || cidadeP.includes(termo)
     const bateEspecie = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
     const bateSub = filtroSub === 'Todas' || r.subespecie === filtroSub
+    
     return bateBusca && bateEspecie && bateSub
   })
 
+  // Agrupamento para o Hall da Fama
   const categoriasUnicas = Array.from(new Set(dadosFiltrados.map(r => `${r.grupo_especie}|${r.modalidade_tipo}`)))
 
   return (
@@ -86,32 +100,4 @@ export default function Home() {
           <div className="space-y-16">
             {categoriasUnicas.map((catKey) => {
               const [grupo, modalidade] = catKey.split('|')
-              const peixesDaCat = dadosFiltrados.filter(r => r.grupo_especie === grupo && r.modalidade_tipo === modalidade)
-              
-              const rankingPB: any[] = []
-              const pescadoresVistos = new Set()
-              peixesDaCat.forEach(p => {
-                if (!pescadoresVistos.has(p.nome_pescador)) {
-                  rankingPB.push(p)
-                  pescadoresVistos.add(p.nome_pescador)
-                }
-              })
-
-              return (
-                <section key={catKey} className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <h2 className="text-2xl font-black uppercase italic bg-black text-yellow-400 px-6 py-2 skew-x-[-10deg]">
-                      {grupo} <span className="text-white opacity-50 ml-2 text-sm">{modalidade}</span>
-                    </h2>
-                    <div className="flex-1 h-1 bg-yellow-400"></div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {rankingPB.map((item, index) => (
-                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 transition-transform hover:scale-[1.01] ${index === 0 ? 'border-yellow-400 ring-4 ring-yellow-400/10' : 'border-gray-100'}`}>
-                        <div className="relative h-56 bg-gray-200">
-                          <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Peixe" />
-                          <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-4 py-1 rounded-full font-black text-xl border-2 border-yellow-400 shadow-2xl">
-                            {item.tamanho_cm}cm
-                          </div>
-                        </div>
+              const peixesDaCat = dadosFiltrados.filter(r => r.grupo_especie === grupo && r.modalidade_tipo
