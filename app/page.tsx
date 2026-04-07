@@ -17,7 +17,7 @@ export default function Home() {
   }
 
   useEffect(() => {
-    const carregar = async () => {
+    async function carregar() {
       const { data } = await supabase.from('recordes').select('*').order('tamanho_cm', { ascending: false })
       if (data) setRecordes(data)
       setLoading(false)
@@ -25,20 +25,25 @@ export default function Home() {
     carregar()
   }, [])
 
-  // Lógica de filtro simplificada para evitar erros
+  // 1. Filtragem dos dados
   const filtrados = recordes.filter(r => {
+    const nome = (r.nome_pescador || "").toLowerCase()
+    const cidade = (r.cidade || "").toLowerCase()
     const termo = busca.toLowerCase()
-    const matchBusca = (r.nome_pescador || "").toLowerCase().includes(termo) || (r.cidade || "").toLowerCase().includes(termo)
-    const matchEsp = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
-    const matchSub = filtroSub === 'Todas' || r.subespecie === filtroSub
-    return matchBusca && matchEsp && matchSub
+    
+    const bB = nome.includes(termo) || cidade.includes(termo)
+    const bE = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
+    const bS = filtroSub === 'Todas' || r.subespecie === filtroSub
+    
+    return bB && bE && bS
   })
 
-  // Criar a lista de categorias (Ex: Tucunaré | Absoluto)
-  const categorias = Array.from(new Set(filtrados.map(r => r.grupo_especie + "|" + r.modalidade_tipo)))
+  // 2. Criação das categorias (Simplificada para evitar erro de sintaxe)
+  const listaCategorias = Array.from(new Set(filtrados.map(r => r.grupo_especie + "|" + r.modalidade_tipo)))
 
   return (
-    <div className="min-h-screen bg-gray-100 text-black font-sans">
+    <div className="min-h-screen bg-gray-100 text-black">
+      {/* CABEÇALHO */}
       <header className="bg-black text-yellow-400 py-12 px-4 border-b-8 border-yellow-400 text-center shadow-2xl">
         <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter">Hall da Fama</h1>
         <p className="mt-2 text-white font-bold tracking-widest opacity-80 uppercase text-[10px]">Trilhas do Rio Fishing Team</p>
@@ -46,7 +51,9 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
         <div className="flex justify-end mb-4">
-          <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-2 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-black hover:bg-black hover:text-yellow-400 transition-all">📊 Ver Tabela Geral</a>
+          <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-2 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-black hover:bg-black hover:text-yellow-400 transition-all">
+            📊 Ver Ranking em Tabela
+          </a>
         </div>
 
         {/* FILTROS */}
@@ -74,21 +81,24 @@ export default function Home() {
           </select>
         </section>
 
+        {/* LISTAGEM POR CATEGORIA */}
         {loading ? (
           <div className="text-center py-20 font-black text-gray-300 animate-pulse">CARREGANDO RANKING...</div>
         ) : (
           <div className="space-y-16">
-            {categorias.map(cat => {
-              const [g, m] = cat.split('|')
-              const peixes = filtrados.filter(r => r.grupo_especie === g && r.modalidade_tipo === m)
+            {listaCategorias.map(cat => {
+              const partes = cat.split('|')
+              const g = partes[0]
+              const m = partes[1]
               
-              // Personal Best (maior de cada pescador na categoria)
+              const peixesDaCat = filtrados.filter(r => r.grupo_especie === g && r.modalidade_tipo === m)
+              
+              // Personal Best (apenas o maior de cada um)
               const pb: any[] = []
               const vistos = new Set()
-              peixes.forEach(p => { 
+              peixesDaCat.forEach(p => { 
                 if(!vistos.has(p.nome_pescador)){ 
-                  pb.push(p); 
-                  vistos.add(p.nome_pescador); 
+                  pb.push(p); vistos.add(p.nome_pescador); 
                 } 
               })
 
@@ -103,28 +113,30 @@ export default function Home() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {pb.map((item, idx) => (
-                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 transition-all hover:scale-[1.02] ${idx === 0 ? 'border-yellow-400' : 'border-gray-100'}`}>
+                      <div key={item.id} className={`bg-white rounded-2xl overflow-hidden shadow-xl border-2 transition-all hover:scale-[1.02] ${idx === 0 ? 'border-yellow-400 ring-4 ring-yellow-400/10' : 'border-gray-100'}`}>
                         <div className="relative h-56 bg-gray-200">
                           <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Peixe" />
                           <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-4 py-1 rounded-full font-black text-xl border-2 border-yellow-400 shadow-2xl">
                             {item.tamanho_cm}cm
                           </div>
                         </div>
+
                         <div className="p-6">
-                          {/* FOCO: ESPÉCIE E SUBESPÉCIE */}
-                          <div className="flex flex-col mb-6">
+                          {/* ESPÉCIE EM DESTAQUE E SUBESPÉCIE ABAIXO */}
+                          <div className="flex flex-col mb-4">
                              <span className="text-2xl font-black uppercase italic leading-none">{item.grupo_especie}</span>
                              <span className="text-[11px] font-black text-yellow-600 uppercase tracking-[0.2em] mt-1">
                                {item.subespecie}
                              </span>
                           </div>
-                          <div className="pt-4 border-t border-gray-100">
+
+                          <div className="mt-6 pt-4 border-t border-gray-100">
                             <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-lg font-bold uppercase hover:text-yellow-600 block leading-tight">
                               {item.nome_pescador}
                             </a>
                             <div className="flex justify-between items-center mt-2 text-[9px] font-bold text-gray-400 uppercase tracking-tighter">
                                <span>📍 {item.cidade}</span>
-                               <a href={`/captura/${item.id}`} className="text-black hover:underline font-black">VER DETALHES →</a>
+                               <a href={`/captura/${item.id}`} className="text-black hover:underline font-black">DETALHES →</a>
                             </div>
                           </div>
                         </div>
@@ -132,3 +144,14 @@ export default function Home() {
                     ))}
                   </div>
                 </section>
+              )
+            })}
+          </div>
+        )}
+      </main>
+      <footer className="bg-black text-gray-700 py-12 text-center text-[10px] font-bold uppercase tracking-[0.4em]">
+        © 2026 Trilhas do Rio Fishing Team
+      </footer>
+    </div>
+  )
+}
