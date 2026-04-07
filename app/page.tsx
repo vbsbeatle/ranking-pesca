@@ -44,26 +44,34 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       {/* CABEÇALHO */}
- <header className="bg-black text-yellow-400 py-6 px-4 border-b-8 border-yellow-400 shadow-2xl">
-  <div className="max-w-6xl mx-auto flex items-center gap-4 md:gap-8">
+ <header className="bg-black text-yellow-400 py-10 px-4 border-b-8 border-yellow-400 shadow-2xl">
+  <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10">
     
-    {/* LOGO MENOR À ESQUERDA */}
+    {/* LOGO CENTRALIZADA/ESQUERDA */}
     <div className="flex-shrink-0">
-      <img 
-        src="/logo-tr.jpg" 
-        alt="Logo TR" 
-        className="h-16 md:h-28 w-auto rounded-lg border border-yellow-400/30 shadow-lg" 
-      />
+      <a href="/">
+        <img 
+          src="/logo-tr.jpg" 
+          alt="Logo Trilhas do Rio" 
+          className="h-24 md:h-36 w-auto rounded-xl border-2 border-yellow-400/20 shadow-2xl transition-transform hover:scale-105" 
+        />
+      </a>
     </div>
 
-    {/* TÍTULO HALL DA FAMA */}
-    <div className="flex flex-col justify-center">
-      <h1 className="text-3xl md:text-6xl font-black italic uppercase tracking-tighter leading-none">
+    {/* BLOCO DE TEXTO CENTRALIZADO */}
+    <div className="text-center md:text-left">
+      <h1 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">
         Hall da Fama
       </h1>
-      <p className="mt-1 text-white font-bold tracking-[0.2em] uppercase text-[9px] md:text-[11px] opacity-70">
-        Trilhas do Rio <span className="text-yellow-400">Pesca Esportiva</span>
-      </p>
+      <div className="flex flex-col md:flex-row items-center gap-2 mt-2">
+        <p className="text-white font-bold tracking-[0.3em] uppercase text-[10px] md:text-xs opacity-80">
+          Trilhas do Rio
+        </p>
+        <span className="hidden md:inline text-yellow-400 text-xs">•</span>
+        <p className="text-yellow-400 font-black tracking-[0.3em] uppercase text-[10px] md:text-xs">
+          Pesca Esportiva
+        </p>
+      </div>
     </div>
 
   </div>
