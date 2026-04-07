@@ -25,7 +25,7 @@ export default function AdminPage() {
     // vamos comparar com o que você definiu. 
     // NOTA: Para um sistema profissional usaríamos Auth do Supabase, 
     // mas para o grupo, esta "tranca" de variável de ambiente funciona bem!
-    if (senhaInput === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || senhaInput === "suasenhaqui") {
+    if (senhaInput === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || senhaInput === "TR123admin!") {
        setLogado(true)
        carregarPescadores()
     } else {
