@@ -12,7 +12,7 @@ export default function GerenciarPage() {
   const checkLogin = (e: any) => {
     e.preventDefault()
     // Use a mesma lógica de senha que definiu anteriormente
-    if (senhaInput === "suasenhaqui") { 
+    if (senhaInput === "TR123admin!") { 
       setLogado(true)
       carregarDados()
     } else {
