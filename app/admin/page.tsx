@@ -18,14 +18,10 @@ export default function AdminPage() {
   }
   const [grupo, setGrupo] = useState("Tucunaré")
 
-  // Verifica a senha (usando a variável que você definiu na Vercel)
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    // A Vercel injeta a variável, mas para segurança no navegador 
-    // vamos comparar com o que você definiu. 
-    // NOTA: Para um sistema profissional usaríamos Auth do Supabase, 
-    // mas para o grupo, esta "tranca" de variável de ambiente funciona bem!
-    if (senhaInput === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || senhaInput === "TR123admin!") {
+    // Substitua "suasenhaqui" pela sua senha real ou use a variável da Vercel
+    if (senhaInput === "suasenhaqui") {
        setLogado(true)
        carregarPescadores()
     } else {
@@ -91,9 +87,9 @@ export default function AdminPage() {
         url_foto_medicao: urlMed,
         nome_cientifico: "Registro"
       }])
-      setMsg('Captura registrada com sucesso!')
+      setMsg('Captura registrada!')
       form.reset()
-    } catch (err) { setMsg('Erro ao salvar captura') }
+    } catch (err) { setMsg('Erro ao salvar') }
     setLoading(false)
   }
 
@@ -101,88 +97,26 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <form onSubmit={fazerLogin} className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm border-t-8 border-yellow-400">
-          <h2 className="text-2xl font-black uppercase italic mb-6">Acesso Restrito</h2>
-          <input 
-            type="password" 
-            placeholder="Digite a Senha Master" 
-            className="w-full p-4 border-2 rounded-xl mb-4 outline-none focus:border-yellow-400"
-            onChange={(e) => setSenhaInput(e.target.value)}
-          />
-          <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase hover:bg-gray-800 transition-all">
-            Entrar no Painel
-          </button>
+          <h2 className="text-2xl font-black uppercase italic mb-6">Área Restrita</h2>
+          <input type="password" placeholder="Senha Master" className="w-full p-4 border-2 rounded-xl mb-4 outline-none" onChange={(e) => setSenhaInput(e.target.value)} />
+          <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase">Entrar</button>
         </form>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-2xl mx-auto bg-white shadow-2xl rounded-xl overflow-hidden border-b-8 border-yellow-400">
-        <div className="flex bg-black">
-          <button onClick={() => setAba('pescador')} className={`flex-1 p-4 font-black uppercase italic ${aba === 'pescador' ? 'bg-yellow-400 text-black' : 'text-white'}`}>1. Membros</button>
-          <button onClick={() => setAba('captura')} className={`flex-1 p-4 font-black uppercase italic ${aba === 'captura' ? 'bg-yellow-400 text-black' : 'text-white'}`}>2. Capturas</button>
+    <div className="min-h-screen bg-gray-100 p-4 pb-20">
+      <div className="max-w-2xl mx-auto">
+        
+        {/* LINKS DE NAVEGAÇÃO SUPERIOR */}
+        <div className="flex justify-between items-center mb-6 px-2">
+           <a href="/" className="text-[10px] font-black uppercase text-gray-400 hover:text-black italic">← Site Público</a>
+           <a href="/admin/gerenciar" className="bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase italic hover:bg-black transition-all shadow-md">
+             🗑️ Gerenciar/Excluir Dados
+           </a>
         </div>
 
-        <div className="p-6">
-          {aba === 'pescador' ? (
-            <form onSubmit={handlePescador} className="space-y-4">
-              <input name="nome" placeholder="Nome Completo" required className="w-full p-3 border-2 rounded" />
-              <input name="cidade" placeholder="Cidade (Ex: Gov. Valadares)" required className="w-full p-3 border-2 rounded" />
-              <label className="block text-[10px] font-black text-gray-400 uppercase">Foto do Perfil</label>
-              <input name="foto" type="file" accept="image/*" required className="w-full text-xs" />
-              <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-bold rounded uppercase shadow-lg">
-                {loading ? 'Salvando...' : 'Cadastrar Pescador'}
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={handleCaptura} className="space-y-4">
-              <select name="pescador_id" required className="w-full p-3 border-2 rounded font-bold bg-gray-50">
-                <option value="">Quem pescou?</option>
-                {pescadores.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
-              </select>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="p-3 border-2 rounded font-bold">
-                  {Object.keys(especiesData).map(e => <option key={e} value={e}>{e}</option>)}
-                </select>
-                <select name="subespecie" className="p-3 border-2 rounded font-bold">
-                  {especiesData[grupo].map((s:any) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <input name="tamanho" type="number" step="0.1" placeholder="Tamanho (cm)" required className="p-3 border-2 rounded font-bold" />
-                <select name="modalidade" className="p-3 border-2 rounded font-bold">
-                  <option value="Absoluto">Absoluto</option>
-                  <option value="Privado">Privado</option>
-                </select>
-              </div>
-
-              <div className="p-4 bg-gray-50 rounded-xl border-2 border-dashed space-y-3">
-                <h3 className="font-black text-[10px] uppercase text-gray-400">Equipamento Utilizado</h3>
-                <select name="tipo_pescaria" className="w-full p-2 border rounded text-sm font-bold">
-                  <option value="Barranco">Barranco</option>
-                  <option value="Embarcado">Embarcado</option>
-                </select>
-                <input name="carretilha" placeholder="Carretilha / Molinete" className="w-full p-2 border rounded text-sm" />
-                <input name="vara" placeholder="Vara" className="w-full p-2 border rounded text-sm" />
-                <input name="isca" placeholder="Isca" className="w-full p-2 border rounded text-sm" />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-[9px] font-black uppercase text-gray-400">
-                <div>Foto Peixe <input name="f_cap" type="file" required className="mt-1 w-full" /></div>
-                <div>Foto Medida <input name="f_med" type="file" required className="mt-1 w-full" /></div>
-              </div>
-
-              <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black rounded uppercase shadow-xl">
-                {loading ? 'Processando...' : 'Lançar no Ranking'}
-              </button>
-            </form>
-          )}
-          {msg && <p className="mt-4 text-center font-black text-sm text-yellow-600 uppercase italic animate-bounce">{msg}</p>}
-        </div>
-      </div>
-    </div>
-  )
-}
+        <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border-b-8 border-yellow-400">
+          <div className="flex bg-black">
+            <button onClick={() => setAba('pescador')} className={`flex-1 p-4 font
