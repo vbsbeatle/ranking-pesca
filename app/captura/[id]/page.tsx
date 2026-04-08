@@ -77,6 +77,10 @@ export default function DetalheCaptura() {
             </div>
 
             {/* EQUIPAMENTO */}
+<div className="flex justify-between border-b border-gray-800 pb-2">
+  <span className="text-gray-500">Tipo de Pesca</span>
+  <span>{c.tipo_pescaria || '---'} {c.tipo_embarcacao ? `(${c.tipo_embarcacao})` : ''}</span>
+</div>
             <div className="bg-black text-white p-8 rounded-3xl shadow-2xl border-b-8 border-yellow-400">
               <h3 className="text-yellow-400 font-black uppercase italic text-xs mb-6">⚙️ Ficha Técnica</h3>
               <div className="space-y-4 text-xs font-bold uppercase tracking-widest">
