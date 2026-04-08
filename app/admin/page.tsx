@@ -10,6 +10,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [grupo, setGrupo] = useState("Tucunaré")
+  
+  // ESTADO PARA CONTROLAR A EXIBIÇÃO DA EMBARCAÇÃO
+  const [tipoPescaria, setTipoPescaria] = useState('Embarcado')
 
   const especiesData: any = {
     "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
@@ -25,7 +28,7 @@ export default function AdminPage() {
 
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    if (senhaInput === "TR123admin!") {
+    if (senhaInput === "suasenhaqui") {
        setLogado(true)
        carregarPescadores()
     } else {
@@ -74,11 +77,12 @@ export default function AdminPage() {
         grupo_especie: grupo,
         subespecie: form.subespecie.value,
         tamanho_cm: parseFloat(form.tamanho.value),
-        data_captura: form.data_captura.value, // NOVO CAMPO
+        data_captura: form.data_captura.value,
         cidade: pSel.cidade,
         estado: "MG",
         modalidade_tipo: form.modalidade.value,
         tipo_pescaria: form.tipo_pescaria.value,
+        tipo_embarcacao: form.tipo_pescaria.value === 'Embarcado' ? form.tipo_embarcacao.value : null, // SALVA SE FOR EMBARCADO
         carretilha: form.carretilha.value,
         vara: form.vara.value,
         isca: form.isca.value,
@@ -131,7 +135,6 @@ export default function AdminPage() {
                   {pescadores.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
                 </select>
                 
-                {/* CAMPO DE DATA DA CAPTURA */}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Data da Captura</label>
                   <input name="data_captura" type="date" required className="w-full p-3 border-2 rounded font-bold bg-gray-50" />
@@ -154,8 +157,32 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                <div className="p-4 bg-gray-50 rounded-xl border-2 space-y-2">
-                  <select name="tipo_pescaria" className="w-full p-2 border rounded font-bold text-xs"><option value="Embarcado">Embarcado</option><option value="Barranco">Barranco</option></select>
+                {/* EQUIPAMENTO COM LÓGICA CONDICIONAL */}
+                <div className="p-4 bg-gray-50 rounded-xl border-2 space-y-3">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Modalidade de Pesca</label>
+                    <select 
+                      name="tipo_pescaria" 
+                      value={tipoPescaria}
+                      onChange={(e) => setTipoPescaria(e.target.value)}
+                      className="w-full p-2 border rounded font-bold text-xs bg-white"
+                    >
+                      <option value="Embarcado">Embarcado</option>
+                      <option value="Barranco">Barranco</option>
+                    </select>
+                  </div>
+
+                  {/* ESSA OPÇÃO SÓ APARECE SE FOR EMBARCADO */}
+                  {tipoPescaria === 'Embarcado' && (
+                    <div className="flex flex-col gap-1 animate-in fade-in slide-in-from-top-1">
+                      <label className="text-[10px] font-black text-yellow-600 uppercase ml-1">Tipo de Embarcação</label>
+                      <select name="tipo_embarcacao" className="w-full p-2 border-2 border-yellow-400 rounded font-bold text-xs bg-white">
+                        <option value="Caiaque">Caiaque</option>
+                        <option value="Barco">Barco</option>
+                      </select>
+                    </div>
+                  )}
+
                   <input name="carretilha" placeholder="Carretilha" className="w-full p-2 border rounded text-xs" />
                   <input name="vara" placeholder="Vara" className="w-full p-2 border rounded text-xs" />
                   <input name="isca" placeholder="Isca" className="w-full p-2 border rounded text-xs" />
