@@ -25,7 +25,7 @@ export default function AdminPage() {
 
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    // Substitua "suasenhaqui" pela sua senha ou use a variável da Vercel
+    // Verificando a senha MASTER
     if (senhaInput === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || senhaInput === "suasenhaqui") {
        setLogado(true)
        carregarPescadores()
@@ -64,16 +64,29 @@ export default function AdminPage() {
       const fCap = form.f_cap.files[0]
       const fMed = form.f_med.files[0]
       const nCap = `${Date.now()}-c`; const nMed = `${Date.now()}-m`
+      
       await supabase.storage.from('fotos-pesca').upload(nCap, fCap)
       await supabase.storage.from('fotos-pesca').upload(nMed, fMed)
+      
       const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nCap).data.publicUrl
       const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nMed).data.publicUrl
 
       const pSel = pescadores.find(p => p.id === form.pescador_id.value)
 
+      // AQUI ESTAVA O ERRO: A LINHA FOI COMPLETADA ABAIXO
       await supabase.from('recordes').insert([{
         pescador_id: form.pescador_id.value,
         nome_pescador: pSel.nome_completo,
         grupo_especie: grupo,
         subespecie: form.subespecie.value,
-        tamanho
+        tamanho_cm: parseFloat(form.tamanho.value),
+        cidade: pSel.cidade,
+        estado: "MG",
+        modalidade_tipo: form.modalidade.value,
+        tipo_pescaria: form.tipo_pescaria.value,
+        carretilha: form.carretilha.value,
+        vara: form.vara.value,
+        isca: form.isca.value,
+        url_foto_captura: urlCap,
+        url_foto_medicao: urlMed,
+        nome_cientifico
