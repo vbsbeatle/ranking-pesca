@@ -28,7 +28,7 @@ export default function AdminPage() {
 
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    if (senhaInput === "suasenhaqui") {
+    if (senhaInput === "TR123admin!") {
        setLogado(true)
        carregarPescadores()
     } else {
