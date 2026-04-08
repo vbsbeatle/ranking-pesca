@@ -58,6 +58,15 @@ export default function DetalheCaptura() {
           </div>
 
           {/* DADOS */}
+<div className="relative z-10">
+  <h2 className="text-4xl font-black uppercase italic leading-none mb-2">{c.nome_pescador}</h2>
+  <p className="text-yellow-600 font-black uppercase text-[10px] tracking-widest italic">
+    📍 {c.local_captura || 'Local não informado'} | {c.cidade}
+  </p>
+  <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">Modalidade: {c.modalidade_tipo}</p>
+  
+  {/* Resto do código (Espécie, Medida, etc.) */}
+</div>
           <div className="space-y-6">
             <div className="bg-white p-8 rounded-3xl shadow-2xl border-l-[12px] border-yellow-400">
               <h2 className="text-4xl font-black uppercase italic leading-none mb-2">{c.nome_pescador}</h2>
