@@ -10,8 +10,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [grupo, setGrupo] = useState("Tucunaré")
-  
-  // ESTADO PARA CONTROLAR A EXIBIÇÃO DA EMBARCAÇÃO
   const [tipoPescaria, setTipoPescaria] = useState('Embarcado')
 
   const especiesData: any = {
@@ -28,7 +26,7 @@ export default function AdminPage() {
 
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    if (senhaInput === "TR123admin!") {
+    if (senhaInput === "suasenhaqui") {
        setLogado(true)
        carregarPescadores()
     } else {
@@ -78,11 +76,12 @@ export default function AdminPage() {
         subespecie: form.subespecie.value,
         tamanho_cm: parseFloat(form.tamanho.value),
         data_captura: form.data_captura.value,
+        local_captura: form.local_captura.value, // NOVO CAMPO SALVO AQUI
         cidade: pSel.cidade,
         estado: "MG",
         modalidade_tipo: form.modalidade.value,
         tipo_pescaria: form.tipo_pescaria.value,
-        tipo_embarcacao: form.tipo_pescaria.value === 'Embarcado' ? form.tipo_embarcacao.value : null, // SALVA SE FOR EMBARCADO
+        tipo_embarcacao: form.tipo_pescaria.value === 'Embarcado' ? form.tipo_embarcacao.value : null,
         carretilha: form.carretilha.value,
         vara: form.vara.value,
         isca: form.isca.value,
@@ -99,10 +98,10 @@ export default function AdminPage() {
   if (!logado) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4 text-black">
-        <form onSubmit={fazerLogin} className="bg-white p-8 rounded-2xl w-full max-w-sm border-t-8 border-yellow-400">
+        <form onSubmit={fazerLogin} className="bg-white p-8 rounded-2xl w-full max-w-sm border-t-8 border-yellow-400 shadow-2xl">
           <h2 className="text-xl font-black uppercase italic mb-6">Acesso Master</h2>
-          <input type="password" placeholder="Senha" className="w-full p-4 border-2 rounded-xl mb-4 outline-none" onChange={(e) => setSenhaInput(e.target.value)} />
-          <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase">Entrar</button>
+          <input type="password" placeholder="Senha" className="w-full p-4 border-2 rounded-xl mb-4 outline-none font-bold" onChange={(e) => setSenhaInput(e.target.value)} />
+          <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase hover:bg-gray-800">Entrar</button>
         </form>
       </div>
     )
@@ -112,7 +111,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-100 p-4 pb-20 text-black font-sans">
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-between items-center mb-6 px-2">
-           <a href="/" className="text-[10px] font-black uppercase text-gray-400 italic">← Site</a>
+           <a href="/" className="text-[10px] font-black uppercase text-gray-400 italic">← Ver Site</a>
            <a href="/admin/gerenciar" className="bg-red-600 text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase italic shadow-md">🗑️ Gerenciar</a>
         </div>
         <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border-b-8 border-yellow-400">
@@ -123,21 +122,27 @@ export default function AdminPage() {
           <div className="p-8">
             {aba === 'pescador' ? (
               <form onSubmit={handlePescador} className="space-y-4">
-                <input name="nome" placeholder="Nome" required className="w-full p-3 border-2 rounded font-bold" />
-                <input name="cidade" placeholder="Cidade" required className="w-full p-3 border-2 rounded font-bold" />
+                <input name="nome" placeholder="Nome Completo" required className="w-full p-3 border-2 rounded font-bold" />
+                <input name="cidade" placeholder="Cidade Base" required className="w-full p-3 border-2 rounded font-bold" />
                 <input name="foto" type="file" accept="image/*" required className="w-full text-xs" />
-                <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-lg">Salvar Pescador</button>
+                <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-lg">Salvar Membro</button>
               </form>
             ) : (
               <form onSubmit={handleCaptura} className="space-y-4">
-                <select name="pescador_id" required className="w-full p-3 border-2 rounded font-black">
-                  <option value="">Pescador</option>
+                <select name="pescador_id" required className="w-full p-3 border-2 rounded font-black bg-gray-50">
+                  <option value="">Selecione o Pescador</option>
                   {pescadores.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
                 </select>
                 
-                <div className="space-y-1">
-                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Data da Captura</label>
-                  <input name="data_captura" type="date" required className="w-full p-3 border-2 rounded font-bold bg-gray-50" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Data</label>
+                    <input name="data_captura" type="date" required className="w-full p-3 border-2 rounded font-bold bg-gray-50 text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Local (Rio/Lagoa)</label>
+                    <input name="local_captura" placeholder="Ex: Rio Doce" required className="w-full p-3 border-2 rounded font-bold bg-white text-sm" />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -150,52 +155,49 @@ export default function AdminPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <input name="tamanho" type="number" step="0.1" placeholder="cm" required className="p-3 border-2 rounded font-black" />
-                  <select name="modalidade" className="p-3 border-2 rounded font-black">
+                  <input name="tamanho" type="number" step="0.1" placeholder="Tamanho (cm)" required className="p-3 border-2 rounded font-black" />
+                  <select name="modalidade" className="p-3 border-2 rounded font-black text-sm">
                     <option value="Absoluto">Absoluto</option>
                     <option value="Privado">Privado</option>
                   </select>
                 </div>
 
-                {/* EQUIPAMENTO COM LÓGICA CONDICIONAL */}
                 <div className="p-4 bg-gray-50 rounded-xl border-2 space-y-3">
                   <div className="flex flex-col gap-1">
                     <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Modalidade de Pesca</label>
-                    <select 
-                      name="tipo_pescaria" 
-                      value={tipoPescaria}
-                      onChange={(e) => setTipoPescaria(e.target.value)}
-                      className="w-full p-2 border rounded font-bold text-xs bg-white"
-                    >
+                    <select name="tipo_pescaria" value={tipoPescaria} onChange={(e) => setTipoPescaria(e.target.value)} className="w-full p-2 border rounded font-bold text-xs bg-white">
                       <option value="Embarcado">Embarcado</option>
                       <option value="Barranco">Barranco</option>
                     </select>
                   </div>
-
-                  {/* ESSA OPÇÃO SÓ APARECE SE FOR EMBARCADO */}
                   {tipoPescaria === 'Embarcado' && (
-                    <div className="flex flex-col gap-1 animate-in fade-in slide-in-from-top-1">
-                      <label className="text-[10px] font-black text-yellow-600 uppercase ml-1">Tipo de Embarcação</label>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-black text-yellow-600 uppercase ml-1">Embarcação</label>
                       <select name="tipo_embarcacao" className="w-full p-2 border-2 border-yellow-400 rounded font-bold text-xs bg-white">
                         <option value="Caiaque">Caiaque</option>
                         <option value="Barco">Barco</option>
                       </select>
                     </div>
                   )}
-
-                  <input name="carretilha" placeholder="Carretilha" className="w-full p-2 border rounded text-xs" />
+                  <input name="carretilha" placeholder="Carretilha/Molinete" className="w-full p-2 border rounded text-xs" />
                   <input name="vara" placeholder="Vara" className="w-full p-2 border rounded text-xs" />
-                  <input name="isca" placeholder="Isca" className="w-full p-2 border rounded text-xs" />
+                  <input name="isca" placeholder="Isca Utilizada" className="w-full p-2 border rounded text-xs" />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-[9px] font-black uppercase text-gray-400">
-                  <div>Foto Peixe <input name="f_cap" type="file" required className="w-full" /></div>
-                  <div>Foto Medida <input name="f_med" type="file" required className="w-full" /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-2 border rounded bg-gray-50">
+                    <p className="text-[9px] font-black uppercase text-gray-400 mb-1">Foto Peixe</p>
+                    <input name="f_cap" type="file" required className="w-full text-[10px]" />
+                  </div>
+                  <div className="p-2 border rounded bg-gray-50">
+                    <p className="text-[9px] font-black uppercase text-gray-400 mb-1">Foto Medição</p>
+                    <input name="f_med" type="file" required className="w-full text-[10px]" />
+                  </div>
                 </div>
-                <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-xl">Lançar Recorde</button>
+                <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-xl hover:bg-gray-800 transition-all">Lançar Recorde</button>
               </form>
             )}
-            {msg && <p className="mt-4 text-center font-black text-sm text-yellow-600 italic">{msg}</p>}
+            {msg && <p className="mt-4 text-center font-black text-sm text-yellow-600 uppercase animate-bounce">{msg}</p>}
           </div>
         </div>
       </div>
