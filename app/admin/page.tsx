@@ -25,8 +25,7 @@ export default function AdminPage() {
 
   const fazerLogin = (e: any) => {
     e.preventDefault()
-    // Verificando a senha MASTER
-    if (senhaInput === process.env.NEXT_PUBLIC_ADMIN_PASSWORD || senhaInput === "suasenhaqui") {
+    if (senhaInput === "suasenhaqui") {
        setLogado(true)
        carregarPescadores()
     } else {
@@ -37,13 +36,12 @@ export default function AdminPage() {
   const handlePescador = async (e: any) => {
     e.preventDefault()
     setLoading(true)
-    const form = e.target
     try {
+      const form = e.target
       const file = form.foto.files[0]
       const fileName = `${Date.now()}-p`
       await supabase.storage.from('fotos-pesca').upload(fileName, file)
       const url = supabase.storage.from('fotos-pesca').getPublicUrl(fileName).data.publicUrl
-
       await supabase.from('pescadores').insert([{
         nome_completo: form.nome.value,
         cidade: form.cidade.value,
@@ -59,34 +57,16 @@ export default function AdminPage() {
   const handleCaptura = async (e: any) => {
     e.preventDefault()
     setLoading(true)
-    const form = e.target
     try {
+      const form = e.target
       const fCap = form.f_cap.files[0]
       const fMed = form.f_med.files[0]
       const nCap = `${Date.now()}-c`; const nMed = `${Date.now()}-m`
-      
       await supabase.storage.from('fotos-pesca').upload(nCap, fCap)
       await supabase.storage.from('fotos-pesca').upload(nMed, fMed)
-      
       const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nCap).data.publicUrl
       const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nMed).data.publicUrl
-
       const pSel = pescadores.find(p => p.id === form.pescador_id.value)
 
-      // AQUI ESTAVA O ERRO: A LINHA FOI COMPLETADA ABAIXO
       await supabase.from('recordes').insert([{
         pescador_id: form.pescador_id.value,
-        nome_pescador: pSel.nome_completo,
-        grupo_especie: grupo,
-        subespecie: form.subespecie.value,
-        tamanho_cm: parseFloat(form.tamanho.value),
-        cidade: pSel.cidade,
-        estado: "MG",
-        modalidade_tipo: form.modalidade.value,
-        tipo_pescaria: form.tipo_pescaria.value,
-        carretilha: form.carretilha.value,
-        vara: form.vara.value,
-        isca: form.isca.value,
-        url_foto_captura: urlCap,
-        url_foto_medicao: urlMed,
-        nome_cientifico
