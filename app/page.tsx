@@ -8,6 +8,8 @@ export default function Home() {
   const [busca, setBusca] = useState('')
   const [filtroEspecie, setFiltroEspecie] = useState('Todas')
   const [loading, setLoading] = useState(true)
+  
+  // Controle da caixa de membros
   const [mostrarMembros, setMostrarMembros] = useState(false)
 
   const subMap: any = {
@@ -28,12 +30,13 @@ export default function Home() {
     carregar()
   }, [])
 
+  // Filtra apenas o MAIOR de cada subespécie para o Hall da Fama
   const vistos = new Set()
   const listaRecordistas = recordes
     .filter(r => {
-      const mBusca = (r.nome_pescador || "").toLowerCase().includes(busca.toLowerCase())
-      const mEsp = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
-      return mBusca && mEsp
+      const matchBusca = (r.nome_pescador || "").toLowerCase().includes(busca.toLowerCase())
+      const matchEsp = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
+      return matchBusca && matchEsp
     })
     .filter(item => {
       const chave = `${item.grupo_especie}-${item.subespecie}`
@@ -44,15 +47,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-black font-sans">
+      {/* CABEÇALHO */}
       <header className="bg-black text-yellow-400 py-10 px-4 border-b-8 border-yellow-400 shadow-2xl">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10">
           <div className="flex-shrink-0">
             <a href="/">
-              <img src="/logo-tr.jpg" alt="Logo" className="h-24 md:h-36 w-auto rounded-xl border-2 border-yellow-400/20 shadow-2xl" />
+              <img src="/logo-tr.jpg" alt="Logo" className="h-24 md:h-36 w-auto rounded-xl border-2 border-yellow-400/20 shadow-2xl transition-transform hover:scale-105" />
             </a>
           </div>
           <div className="text-center md:text-left">
-            <h1 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">Hall da Fama</h1>
+            <h1 className="text-4xl md:text-7xl font-black italic uppercase tracking-tighter leading-none text-white">
+              Hall da <span className="text-yellow-400">Fama</span>
+            </h1>
             <p className="text-white font-bold tracking-[0.3em] uppercase text-[10px] mt-2 opacity-80">
               Trilhas do Rio <span className="text-yellow-400">Pesca Esportiva</span>
             </p>
@@ -62,8 +68,8 @@ export default function Home() {
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
         
+        {/* BOTÕES DE ACESSO RÁPIDO */}
         <div className="flex flex-col sm:flex-row justify-end mb-6 gap-3">
-          {/* LINK DO FORMULÁRIO ATUALIZADO ABAIXO */}
           <a 
             href="https://forms.gle/Y6L88Vk7wdZv8spw9" 
             target="_blank" 
@@ -80,6 +86,7 @@ export default function Home() {
           </a>
         </div>
 
+        {/* FILTROS DE BUSCA */}
         <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <input 
             type="text" 
@@ -96,15 +103,18 @@ export default function Home() {
           </select>
         </section>
 
+        {/* SELETOR DE MEMBROS (CAIXA RETRÁTIL) */}
         <section className="mb-12">
           <button 
             onClick={() => setMostrarMembros(!mostrarMembros)}
             className="w-full bg-white border-2 border-gray-200 p-4 rounded-xl shadow-md flex justify-between items-center hover:border-yellow-400 transition-all group"
           >
             <span className="font-black uppercase italic text-xs tracking-widest text-gray-500 group-hover:text-black">
-              {mostrarMembros ? '▲ Fechar Lista' : '▼ Ver Perfis dos Pescadores'}
+              {mostrarMembros ? '▲ Fechar Lista de Pescadores' : '▼ Ver Perfis dos Pescadores'}
             </span>
-            <span className="bg-gray-100 text-[10px] font-black px-3 py-1 rounded-full">{membros.length} Membros</span>
+            <span className="bg-yellow-400 text-black text-[10px] font-black px-3 py-1 rounded-full shadow-sm">
+              {membros.length} Ativos
+            </span>
           </button>
 
           {mostrarMembros && (
@@ -122,8 +132,9 @@ export default function Home() {
           )}
         </section>
 
+        {/* GRID DE RECORDES */}
         {loading ? (
-          <div className="text-center py-20 font-black text-gray-300 animate-pulse uppercase tracking-widest">Carregando Recordes...</div>
+          <div className="text-center py-20 font-black text-gray-300 animate-pulse uppercase tracking-widest">Sincronizando Recordes...</div>
         ) : (
           <div className="space-y-12">
             <div className="flex items-center gap-4">
@@ -137,7 +148,7 @@ export default function Home() {
               {listaRecordistas.map((item) => (
                 <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-yellow-400 transition-all hover:scale-[1.02]">
                   <div className="relative h-64 bg-gray-200">
-                    <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Captura" />
+                    <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Foto Troféu" />
                     <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-5 py-2 rounded-full font-black text-2xl border-2 border-yellow-400 shadow-2xl">
                       {item.tamanho_cm}cm
                     </div>
@@ -149,16 +160,23 @@ export default function Home() {
                     </div>
                     <div className="pt-4 border-t border-gray-100">
                       <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest">Pescador Recordista</p>
-                      <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-xl font-bold uppercase hover:text-yellow-600 leading-tight block mb-4">{item.nome_pescador}</a>
+                      <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-xl font-bold uppercase hover:text-yellow-600 leading-tight block mb-4">
+                        {item.nome_pescador}
+                      </a>
                       <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase">
                          <span>📍 {item.local_captura || item.cidade}</span>
-                         <a href={`/captura/${item.id}`} className="bg-black text-yellow-400 px-3 py-1 rounded font-black hover:bg-yellow-400 hover:text-black transition-colors">Detalhes</a>
+                         <a href={`/captura/${item.id}`} className="bg-black text-yellow-400 px-3 py-1 rounded font-black hover:bg-yellow-400 hover:text-black transition-colors">
+                           Ver Certificado
+                         </a>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+            {listaRecordistas.length === 0 && (
+              <p className="text-center py-10 text-gray-400 font-bold uppercase italic">Nenhum peixe encontrado com esses critérios.</p>
+            )}
           </div>
         )}
       </main>
