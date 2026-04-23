@@ -4,121 +4,120 @@ import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 
 export default function DetalheCaptura() {
-  const params = useParams()
-  const [c, setC] = useState<any>(null)
+  const { id } = useParams()
+  const [registro, setRegistro] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function carregar() {
-      if (!params.id) return
-      const { data } = await supabase
-        .from('recordes')
-        .select('*')
-        .eq('id', params.id)
-        .single()
-      
-      if (data) setC(data)
+      const { data } = await supabase.from('recordes').select('*').eq('id', id).single()
+      if (data) setRegistro(data)
       setLoading(false)
     }
     carregar()
-  }, [params.id])
+  }, [id])
 
-  if (loading) {
-    return <div className="p-20 text-center font-black text-gray-400 animate-pulse uppercase">Carregando Certificado...</div>
-  }
-
-  if (!c) {
-    return <div className="p-20 text-center font-bold">Registro não encontrado.</div>
-  }
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Carregando Troféu...</div>
+  if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Registro não encontrado.</div>
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-20 text-black">
-      {/* TOPO */}
-      <header className="bg-black text-yellow-400 py-10 px-4 border-b-8 border-yellow-400 text-center shadow-2xl">
-        <div className="max-w-5xl mx-auto flex justify-between items-center mb-4 text-[10px] font-black uppercase">
-           <a href="/ranking-lista" className="hover:underline">← Voltar à Lista</a>
-           <span className="bg-yellow-400 text-black px-3 py-1 rounded shadow-lg">Registro Oficial</span>
+    <div className="min-h-screen bg-zinc-900 p-4 md:p-10 flex justify-center items-start font-sans">
+      
+      {/* MOLDURA DO CERTIFICADO */}
+      <div className="bg-white w-full max-w-3xl border-[12px] border-double border-yellow-500 p-6 md:p-12 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
+        
+        {/* FUNDO DE MARCA D'ÁGUA (OPCIONAL) */}
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center">
+            <img src="/logo-tr.jpg" alt="Watermark" className="w-1/2" />
         </div>
-        <h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter">Certificado</h1>
-      </header>
 
-      <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* CABEÇALHO COM LOGO */}
+        <header className="text-center border-b-2 border-gray-200 pb-6 mb-10 relative z-10">
+          <div className="flex flex-col items-center gap-4">
+            <img src="/logo-tr.jpg" alt="Logo Trilhas do Rio" className="h-20 w-auto rounded shadow-sm border border-gray-100" />
+            <div>
+              <h1 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter text-black">
+                Certificado de <span className="text-yellow-600">Captura</span>
+              </h1>
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 mt-1">Trilhas do Rio Pesca Esportiva</p>
+            </div>
+          </div>
+        </header>
+
+        {/* NOME DO PESCADOR (COM ESPAÇAMENTO ADICIONAL) */}
+        <section className="text-center mb-10 mt-12 relative z-10">
+          <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">Certificamos que o pescador</p>
+          <h2 className="text-3xl md:text-5xl font-black uppercase italic text-black border-b-4 border-black inline-block px-4 pb-2">
+            {registro.nome_pescador}
+          </h2>
+        </section>
+
+        {/* DETALHES DO PEIXE */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
           
-          {/* FOTOS */}
           <div className="space-y-6">
-            <div className="bg-white p-3 rounded-3xl shadow-xl border border-gray-200">
-              <img src={c.url_foto_captura} className="rounded-2xl w-full object-cover" alt="Captura" />
-              <p className="text-center text-[9px] font-black uppercase text-gray-400 mt-2">Foto da Captura</p>
+            <div>
+              <p className="text-[9px] font-black uppercase text-gray-400">Espécie / Subespécie</p>
+              <p className="text-xl font-black uppercase italic text-yellow-700">{registro.grupo_especie} <span className="text-black">({registro.subespecie})</span></p>
             </div>
-            <div className="bg-white p-3 rounded-3xl shadow-xl border border-gray-200">
-              <img src={c.url_foto_medicao} className="rounded-2xl w-full object-cover" alt="Medição" />
-              <p className="text-center text-[9px] font-black uppercase text-gray-400 mt-2">Prova de Medição</p>
+
+            <div className="bg-black text-yellow-400 p-4 rounded-xl inline-block shadow-lg">
+              <p className="text-[9px] font-black uppercase opacity-70 mb-1 text-white">Comprimento Oficial</p>
+              <p className="text-5xl font-black italic">{registro.tamanho_cm}<span className="text-2xl ml-1 uppercase">cm</span></p>
             </div>
-          </div>
 
-          {/* DADOS */}
-<div className="relative z-10">
-  <h2 className="text-4xl font-black uppercase italic leading-none mb-2">{c.nome_pescador}</h2>
-  <p className="text-yellow-600 font-black uppercase text-[10px] tracking-widest italic">
-    📍 {c.local_captura || 'Local não informado'} | {c.cidade}
-  </p>
-  <p className="text-[9px] font-bold text-gray-400 uppercase mt-1">Modalidade: {c.modalidade_tipo}</p>
-  
-  {/* Resto do código (Espécie, Medida, etc.) */}
-</div>
-          <div className="space-y-6">
-            <div className="bg-white p-8 rounded-3xl shadow-2xl border-l-[12px] border-yellow-400">
-              <h2 className="text-4xl font-black uppercase italic leading-none mb-2">{c.nome_pescador}</h2>
-              <p className="text-yellow-600 font-black uppercase text-[10px] tracking-widest">📍 {c.cidade} | {c.modalidade_tipo}</p>
-
-              <div className="grid grid-cols-2 gap-6 mt-10">
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Espécie</p>
-                  <p className="font-black text-xl uppercase italic">{c.grupo_especie}</p>
-                  <p className="font-bold text-yellow-600 text-[10px] uppercase">{c.subespecie}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Medida</p>
-                  <p className="font-black text-4xl leading-none">{c.tamanho_cm}<span className="text-sm ml-1">cm</span></p>
-                </div>
+            <div className="grid grid-cols-2 gap-4 text-black font-bold text-xs uppercase">
+              <div>
+                <p className="text-[8px] text-gray-400 font-black">Data</p>
+                <p>{new Date(registro.data_captura).toLocaleDateString('pt-BR')}</p>
               </div>
-            </div>
-
-            {/* EQUIPAMENTO */}
-<div className="flex justify-between border-b border-gray-800 pb-2">
-  <span className="text-gray-500">Tipo de Pesca</span>
-  <span>{c.tipo_pescaria || '---'} {c.tipo_embarcacao ? `(${c.tipo_embarcacao})` : ''}</span>
-</div>
-            <div className="bg-black text-white p-8 rounded-3xl shadow-2xl border-b-8 border-yellow-400">
-              <h3 className="text-yellow-400 font-black uppercase italic text-xs mb-6">⚙️ Ficha Técnica</h3>
-              <div className="space-y-4 text-xs font-bold uppercase tracking-widest">
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Tipo</span>
-                  <span>{c.tipo_pescaria || '---'}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Carretilha</span>
-                  <span className="text-yellow-100">{c.carretilha || '---'}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-800 pb-2">
-                  <span className="text-gray-500">Vara</span>
-                  <span>{c.vara || '---'}</span>
-                </div>
-                <div className="flex justify-between pt-2">
-                  <span className="text-gray-500">Isca</span>
-                  <span className="bg-yellow-400 text-black px-4 py-1 rounded-full font-black text-[9px] italic">
-                    {c.isca || '---'}
-                  </span>
-                </div>
+              <div>
+                <p className="text-[8px] text-gray-400 font-black">Localização</p>
+                <p>{registro.local_captura}</p>
               </div>
             </div>
           </div>
+
+          {/* FOTO DO PEIXE */}
+          <div className="border-4 border-black rounded-xl overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform">
+            <img src={registro.url_foto_captura} alt="Foto da Captura" className="w-full h-64 object-cover" />
+          </div>
+
         </div>
-      </main>
-      <footer className="text-center py-10 text-[9px] font-bold text-gray-400 uppercase tracking-[0.3em]">
-        © 2026 Trilhas do Rio Fishing Team
-      </footer>
+
+        {/* RODAPÉ TÉCNICO */}
+        <footer className="mt-12 pt-6 border-t-2 border-gray-100 grid grid-cols-3 gap-2 text-center relative z-10">
+          <div>
+            <p className="text-[8px] font-black text-gray-400 uppercase">Isca</p>
+            <p className="text-[10px] font-bold uppercase">{registro.isca || 'Não informada'}</p>
+          </div>
+          <div>
+            <p className="text-[8px] font-black text-gray-400 uppercase">Modalidade</p>
+            <p className="text-[10px] font-bold uppercase">{registro.modalidade_tipo}</p>
+          </div>
+          <div>
+            <p className="text-[8px] font-black text-gray-400 uppercase">Equipamento</p>
+            <p className="text-[10px] font-bold uppercase">{registro.carretilha || 'N/A'}</p>
+          </div>
+        </footer}
+
+        {/* SELO DE AUTENTICIDADE */}
+        <div className="absolute bottom-6 right-6 opacity-20 hidden md:block">
+            <div className="w-24 h-24 border-4 border-gray-400 rounded-full flex items-center justify-center text-[10px] font-black uppercase text-center p-2 rotate-12">
+                Registro Oficial Trilhas do Rio
+            </div>
+        </div>
+
+      </div>
+
+      {/* BOTÃO VOLTAR (FORA DO CERTIFICADO PARA NÃO SAIR NA IMPRESSÃO) */}
+      <button 
+        onClick={() => window.history.back()} 
+        className="fixed bottom-6 right-6 bg-yellow-400 text-black px-6 py-3 rounded-full font-black uppercase italic text-xs shadow-2xl hover:bg-black hover:text-yellow-400 transition-all print:hidden"
+      >
+        ← Voltar
+      </button>
+
     </div>
   )
 }
