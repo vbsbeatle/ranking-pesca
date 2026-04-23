@@ -19,7 +19,6 @@ export default function AdminPage() {
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
   }
 
-  // 1. Monitorar Autenticação
   useEffect(() => {
     async function checkUser() {
       const { data } = await supabase.auth.getUser()
@@ -32,16 +31,12 @@ export default function AdminPage() {
     checkUser()
   }, [])
 
-  // 2. Funções de Acesso
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error) {
-      alert("Erro: " + error.message)
-    } else {
-      window.location.reload()
-    }
+    if (error) alert("Erro: " + error.message)
+    else window.location.reload()
     setLoading(false)
   }
 
@@ -50,50 +45,34 @@ export default function AdminPage() {
     window.location.reload()
   }
 
-  // 3. Cadastrar Pescador
   const handlePescador = async (e: any) => {
     e.preventDefault()
     setLoading(true)
-    const form = e.target
     try {
+      const form = e.target
       const file = form.foto.files[0]
       const fileName = `${Date.now()}-p`
       await supabase.storage.from('fotos-pesca').upload(fileName, file)
       const url = supabase.storage.from('fotos-pesca').getPublicUrl(fileName).data.publicUrl
-      
-      await supabase.from('pescadores').insert([{ 
-        nome_completo: form.nome.value, 
-        cidade: form.cidade.value, 
-        url_foto: url 
-      }])
-      
-      setMsg('Pescador salvo com sucesso!')
-      form.reset()
+      await supabase.from('pescadores').insert([{ nome_completo: form.nome.value, cidade: form.cidade.value, url_foto: url }])
+      setMsg('Membro salvo!'); form.reset()
       const { data } = await supabase.from('pescadores').select('*').order('nome_completo')
       if (data) setPescadores(data)
-    } catch (err) {
-      setMsg('Erro ao cadastrar pescador')
-    }
+    } catch (err) { setMsg('Erro no cadastro') }
     setLoading(false)
   }
 
-  // 4. Cadastrar Captura
   const handleCaptura = async (e: any) => {
     e.preventDefault()
     setLoading(true)
-    const form = e.target
     try {
-      const fCap = form.f_cap.files[0]
-      const fMed = form.f_med.files[0]
-      const nCap = `${Date.now()}-c`
-      const nMed = `${Date.now()}-m`
-      
+      const form = e.target
+      const fCap = form.f_cap.files[0]; const fMed = form.f_med.files[0]
+      const nCap = `${Date.now()}-c`; const nMed = `${Date.now()}-m`
       await supabase.storage.from('fotos-pesca').upload(nCap, fCap)
       await supabase.storage.from('fotos-pesca').upload(nMed, fMed)
-      
       const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nCap).data.publicUrl
       const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nMed).data.publicUrl
-      
       const pSel = pescadores.find(p => p.id === form.pescador_id.value)
 
       await supabase.from('recordes').insert([{
@@ -106,4 +85,35 @@ export default function AdminPage() {
         local_captura: form.local_captura.value,
         cidade: pSel.cidade,
         estado: "MG",
-        modal
+        modalidade_tipo: form.modalidade.value,
+        tipo_pescaria: form.tipo_pescaria.value,
+        tipo_embarcacao: form.tipo_pescaria.value === 'Embarcado' ? form.tipo_embarcacao.value : null,
+        carretilha: form.carretilha.value,
+        vara: form.vara.value,
+        isca: form.isca.value,
+        url_foto_captura: urlCap,
+        url_foto_medicao: urlMed,
+        nome_cientifico: "Registro Oficial"
+      }])
+      setMsg('Captura registrada!'); form.reset()
+    } catch (err) { setMsg('Erro ao salvar') }
+    setLoading(false)
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl w-full max-w-sm border-t-8 border-yellow-400">
+          <h2 className="text-xl font-black uppercase italic mb-6 text-center text-black">Acesso Admin</h2>
+          <input type="email" placeholder="E-mail" className="w-full p-4 border-2 rounded-xl mb-4 font-bold text-black" onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Senha" className="w-full p-4 border-2 rounded-xl mb-6 font-bold text-black" onChange={(e) => setSenha(e.target.value)} required />
+          <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase">Entrar</button>
+        </form>
+      </div>
+    )
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4 pb-20 text-black">
+      <div className="max-w-2xl mx-auto">
+        <div className="flex justify-
