@@ -26,7 +26,7 @@ export default function DetalheCaptura() {
       if (cap) {
         setRegistro(cap)
         
-        // 2. CÁLCULO DE POSIÇÃO DINÂMICA (Puxa todos da categoria e ordena via código)
+        // 2. CÁLCULO DE POSIÇÃO DINÂMICA
         const { data: todos } = await supabase
           .from('recordes')
           .select('id, tamanho_cm')
@@ -35,10 +35,10 @@ export default function DetalheCaptura() {
           .eq('modalidade_tipo', cap.modalidade_tipo)
 
         if (todos && todos.length > 0) {
-          // Ordena de forma estritamente numérica (decrescente: do maior para o menor)
+          // Ordena decrescente pelo tamanho de forma estritamente numérica
           const ordenados = todos.sort((a, b) => parseFloat(b.tamanho_cm) - parseFloat(a.tamanho_cm))
           
-          // Encontra a posição exata deste peixe na lista ordenada
+          // Encontra a posição exata deste peixe
           const index = ordenados.findIndex(item => item.id === cap.id)
           setPosicao(index !== -1 ? index + 1 : 1)
         } else {
@@ -85,7 +85,7 @@ export default function DetalheCaptura() {
     if (!error) { setNovoComentario(''); carregarComentarios(); }
   }
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Calculando Posições no Pódio...</div>
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Validando Posição no Pódio...</div>
   if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Captura inexistente.</div>
 
   return (
@@ -127,8 +127,12 @@ export default function DetalheCaptura() {
           </div>
 
           <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center -rotate-1"><img src={item => registro.url_foto_captura} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" src={registro.url_foto_captura} /></div>
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center rotate-1"><img src={item => registro.url_foto_medicao} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" src={registro.url_foto_medicao} /></div>
+            <div className="bg-white p-2 shadow-xl border flex items-center justify-center -rotate-1">
+              <img src={registro.url_foto_captura} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" alt="Foto do Peixe" />
+            </div>
+            <div className="bg-white p-2 shadow-xl border flex items-center justify-center rotate-1">
+              <img src={registro.url_foto_medicao} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" alt="Foto da Medição" />
+            </div>
           </div>
         </div>
 
