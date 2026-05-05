@@ -18,12 +18,27 @@ export default function DetalheCaptura() {
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
 
-  // Funções Auxiliares de Limpeza e Padronização
-  const normalizar = (texto: any) => String(texto || '').trim().toLowerCase()
-  
+  // --- FUNÇÕES DE LIMPEZA E PADRONIZAÇÃO DE DADOS ---
+  const normalizar = (texto: any) => {
+    return String(texto || '')
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove acentos (ex: Tucunaré -> tucunare)
+  }
+
+  const normalizarModalidade = (val: any) => {
+    const limpo = normalizar(val)
+    // Se estiver vazio, nulo ou "absoluto", padroniza como "absoluto"
+    if (!limpo || limpo === 'null' || limpo === 'undefined' || limpo === 'absoluto') {
+      return 'absoluto'
+    }
+    return limpo
+  }
+
   const converterTamanho = (valor: any) => {
     if (!valor) return 0
-    // Substitui vírgulas por pontos e remove tudo o que não for número ou ponto
+    // Trata vírgula como ponto e remove caracteres inválidos
     const limpo = String(valor).replace(',', '.').replace(/[^0-9.]/g, '')
     return parseFloat(limpo) || 0
   }
@@ -36,22 +51,22 @@ export default function DetalheCaptura() {
       if (cap) {
         setRegistro(cap)
         
-        // 2. Busca TODOS os recordes para comparar em memória de forma segura
+        // 2. Busca todos os recordes do banco de dados
         const { data: todos } = await supabase.from('recordes').select('id, tamanho_cm, grupo_especie, subespecie, modalidade_tipo')
 
         if (todos && todos.length > 0) {
-          // Filtra limpando qualquer diferença de digitação (espaços, maiúsculas, etc.)
+          // Filtra limpando qualquer diferença de digitação ou campos nulos
           const mesmaCategoria = todos.filter(item => 
             normalizar(item.grupo_especie) === normalizar(cap.grupo_especie) &&
             normalizar(item.subespecie) === normalizar(cap.subespecie) &&
-            normalizar(item.modalidade_tipo) === normalizar(cap.modalidade_tipo)
+            normalizarModalidade(item.modalidade_tipo) === normalizarModalidade(cap.modalidade_tipo)
           )
 
-          // Ordena de forma estritamente numérica (do maior tamanho para o menor)
+          // Ordena de forma estritamente numérica (decrescente: do maior para o menor)
           const ordenados = mesmaCategoria.sort((a, b) => converterTamanho(b.tamanho_cm) - converterTamanho(a.tamanho_cm))
           
-          // Encontra a posição real do peixe atual
-          const index = ordenados.findIndex(item => item.id === cap.id)
+          // Encontra a posição real do peixe atual comparando IDs como String
+          const index = ordenados.findIndex(item => String(item.id) === String(cap.id))
           setPosicao(index !== -1 ? index + 1 : 1)
         } else {
           setPosicao(1)
@@ -97,7 +112,7 @@ export default function DetalheCaptura() {
     if (!error) { setNovoComentario(''); carregarComentarios(); }
   }
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Calculando Posições no Pódio...</div>
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Sincronizando Pódio...</div>
   if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Captura inexistente.</div>
 
   return (
