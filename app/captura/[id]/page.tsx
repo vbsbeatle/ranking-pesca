@@ -18,27 +18,39 @@ export default function DetalheCaptura() {
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
 
+  // Funções Auxiliares de Limpeza e Padronização
+  const normalizar = (texto: any) => String(texto || '').trim().toLowerCase()
+  
+  const converterTamanho = (valor: any) => {
+    if (!valor) return 0
+    // Substitui vírgulas por pontos e remove tudo o que não for número ou ponto
+    const limpo = String(valor).replace(',', '.').replace(/[^0-9.]/g, '')
+    return parseFloat(limpo) || 0
+  }
+
   useEffect(() => {
     async function carregar() {
-      // 1. Carrega dados da captura
+      // 1. Carrega dados da captura atual
       const { data: cap } = await supabase.from('recordes').select('*').eq('id', id).single()
       
       if (cap) {
         setRegistro(cap)
         
-        // 2. CÁLCULO DE POSIÇÃO DINÂMICA
-        const { data: todos } = await supabase
-          .from('recordes')
-          .select('id, tamanho_cm')
-          .eq('grupo_especie', cap.grupo_especie)
-          .eq('subespecie', cap.subespecie)
-          .eq('modalidade_tipo', cap.modalidade_tipo)
+        // 2. Busca TODOS os recordes para comparar em memória de forma segura
+        const { data: todos } = await supabase.from('recordes').select('id, tamanho_cm, grupo_especie, subespecie, modalidade_tipo')
 
         if (todos && todos.length > 0) {
-          // Ordena decrescente pelo tamanho de forma estritamente numérica
-          const ordenados = todos.sort((a, b) => parseFloat(b.tamanho_cm) - parseFloat(a.tamanho_cm))
+          // Filtra limpando qualquer diferença de digitação (espaços, maiúsculas, etc.)
+          const mesmaCategoria = todos.filter(item => 
+            normalizar(item.grupo_especie) === normalizar(cap.grupo_especie) &&
+            normalizar(item.subespecie) === normalizar(cap.subespecie) &&
+            normalizar(item.modalidade_tipo) === normalizar(cap.modalidade_tipo)
+          )
+
+          // Ordena de forma estritamente numérica (do maior tamanho para o menor)
+          const ordenados = mesmaCategoria.sort((a, b) => converterTamanho(b.tamanho_cm) - converterTamanho(a.tamanho_cm))
           
-          // Encontra a posição exata deste peixe
+          // Encontra a posição real do peixe atual
           const index = ordenados.findIndex(item => item.id === cap.id)
           setPosicao(index !== -1 ? index + 1 : 1)
         } else {
@@ -85,7 +97,7 @@ export default function DetalheCaptura() {
     if (!error) { setNovoComentario(''); carregarComentarios(); }
   }
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Validando Posição no Pódio...</div>
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Calculando Posições no Pódio...</div>
   if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Captura inexistente.</div>
 
   return (
