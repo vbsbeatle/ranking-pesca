@@ -20,20 +20,30 @@ export default function DetalheCaptura() {
 
   useEffect(() => {
     async function carregar() {
+      // 1. Carrega dados da captura
       const { data: cap } = await supabase.from('recordes').select('*').eq('id', id).single()
+      
       if (cap) {
         setRegistro(cap)
         
-        // CÁLCULO DE POSIÇÃO (Grupo + Subespécie)
-        const { count } = await supabase
+        // 2. CÁLCULO DE POSIÇÃO DINÂMICA (Puxa todos da categoria e ordena via código)
+        const { data: todos } = await supabase
           .from('recordes')
-          .select('*', { count: 'exact', head: true })
+          .select('id, tamanho_cm')
           .eq('grupo_especie', cap.grupo_especie)
           .eq('subespecie', cap.subespecie)
           .eq('modalidade_tipo', cap.modalidade_tipo)
-          .gt('tamanho_cm', cap.tamanho_cm)
-        
-        setPosicao((count || 0) + 1)
+
+        if (todos && todos.length > 0) {
+          // Ordena de forma estritamente numérica (decrescente: do maior para o menor)
+          const ordenados = todos.sort((a, b) => parseFloat(b.tamanho_cm) - parseFloat(a.tamanho_cm))
+          
+          // Encontra a posição exata deste peixe na lista ordenada
+          const index = ordenados.findIndex(item => item.id === cap.id)
+          setPosicao(index !== -1 ? index + 1 : 1)
+        } else {
+          setPosicao(1)
+        }
       }
       
       const sessaoLocal = localStorage.getItem('tr_sessao')
@@ -75,14 +85,14 @@ export default function DetalheCaptura() {
     if (!error) { setNovoComentario(''); carregarComentarios(); }
   }
 
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Validando Posição...</div>
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Calculando Posições no Pódio...</div>
   if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Captura inexistente.</div>
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-2 md:p-10 flex flex-col items-center font-sans pb-40">
+    <div className="min-h-screen bg-zinc-950 p-2 md:p-10 flex flex-col items-center font-sans pb-40 text-black">
       
       {/* CERTIFICADO */}
-      <div className="bg-white w-full max-w-5xl border-[12px] border-double border-yellow-500 p-4 md:p-12 shadow-[0_0_60px_rgba(0,0,0,1)] relative overflow-hidden mb-10 text-black">
+      <div className="bg-white w-full max-w-5xl border-[12px] border-double border-yellow-500 p-4 md:p-12 shadow-[0_0_60px_rgba(0,0,0,1)] relative overflow-hidden mb-10">
         <header className="text-center border-b-2 border-gray-100 pb-8 relative z-10 flex flex-col items-center">
           <img src="/logo-tr.jpg" alt="Logo" className="h-24 w-auto rounded shadow-md mb-4" />
           <h1 className="text-3xl md:text-5xl font-black uppercase italic text-black leading-none">Certificado de <span className="text-yellow-600">Captura</span></h1>
@@ -112,13 +122,13 @@ export default function DetalheCaptura() {
             <div className="space-y-4 pt-6 border-t border-gray-100 text-[11px] font-black uppercase">
               <div className="flex items-center gap-3"><span className="text-yellow-500">📅</span> {new Date(registro.data_captura).toLocaleDateString('pt-BR')}</div>
               <div className="flex items-center gap-3"><span className="text-yellow-500">📍</span> {registro.local_captura}</div>
-              <div className="flex items-center gap-3 text-yellow-600"><span className="text-yellow-600">⚓</span> Modalidade: {registro.modalidade_tipo}</div>
+              <div className="flex items-center gap-3 text-yellow-600"><span className="text-yellow-600">⚓</span> {registro.modalidade_tipo}</div>
             </div>
           </div>
 
           <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center -rotate-1"><img src={registro.url_foto_captura} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" /></div>
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center rotate-1"><img src={registro.url_foto_medicao} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" /></div>
+            <div className="bg-white p-2 shadow-xl border flex items-center justify-center -rotate-1"><img src={item => registro.url_foto_captura} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" src={registro.url_foto_captura} /></div>
+            <div className="bg-white p-2 shadow-xl border flex items-center justify-center rotate-1"><img src={item => registro.url_foto_medicao} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" src={registro.url_foto_medicao} /></div>
           </div>
         </div>
 
