@@ -18,18 +18,17 @@ export default function DetalheCaptura() {
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
 
-  // --- FUNÇÕES DE LIMPEZA E PADRONIZAÇÃO DE DADOS ---
+  // Funções de Padronização
   const normalizar = (texto: any) => {
     return String(texto || '')
       .trim()
       .toLowerCase()
       .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "") // Remove acentos (ex: Tucunaré -> tucunare)
+      .replace(/[\u0300-\u036f]/g, "")
   }
 
   const normalizarModalidade = (val: any) => {
     const limpo = normalizar(val)
-    // Se estiver vazio, nulo ou "absoluto", padroniza como "absoluto"
     if (!limpo || limpo === 'null' || limpo === 'undefined' || limpo === 'absoluto') {
       return 'absoluto'
     }
@@ -38,34 +37,29 @@ export default function DetalheCaptura() {
 
   const converterTamanho = (valor: any) => {
     if (!valor) return 0
-    // Trata vírgula como ponto e remove caracteres inválidos
     const limpo = String(valor).replace(',', '.').replace(/[^0-9.]/g, '')
     return parseFloat(limpo) || 0
   }
 
   useEffect(() => {
     async function carregar() {
-      // 1. Carrega dados da captura atual
       const { data: cap } = await supabase.from('recordes').select('*').eq('id', id).single()
       
       if (cap) {
         setRegistro(cap)
         
-        // 2. Busca todos os recordes do banco de dados
+        // Busca todos para comparar o ranking
         const { data: todos } = await supabase.from('recordes').select('id, tamanho_cm, grupo_especie, subespecie, modalidade_tipo')
 
         if (todos && todos.length > 0) {
-          // Filtra limpando qualquer diferença de digitação ou campos nulos
           const mesmaCategoria = todos.filter(item => 
             normalizar(item.grupo_especie) === normalizar(cap.grupo_especie) &&
             normalizar(item.subespecie) === normalizar(cap.subespecie) &&
             normalizarModalidade(item.modalidade_tipo) === normalizarModalidade(cap.modalidade_tipo)
           )
 
-          // Ordena de forma estritamente numérica (decrescente: do maior para o menor)
           const ordenados = mesmaCategoria.sort((a, b) => converterTamanho(b.tamanho_cm) - converterTamanho(a.tamanho_cm))
           
-          // Encontra a posição real do peixe atual comparando IDs como String
           const index = ordenados.findIndex(item => String(item.id) === String(cap.id))
           setPosicao(index !== -1 ? index + 1 : 1)
         } else {
@@ -126,9 +120,9 @@ export default function DetalheCaptura() {
         </header>
 
         <section className="text-center my-10 relative z-10">
-          {/* SELO DE POSIÇÃO DINÂMICO */}
+          {/* SELO DE POSIÇÃO DINÂMICO (COM MODALIDADE NO FIM) */}
           <div className="inline-block bg-yellow-400 text-black px-8 py-3 rounded-full font-black uppercase italic text-sm shadow-xl mb-8 border-2 border-black">
-             🏆 {posicao}º Lugar em {registro.grupo_especie} {registro.subespecie}
+             🏆 {posicao}º Lugar em {registro.grupo_especie} {registro.subespecie} {registro.modalidade_tipo}
           </div>
           
           <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-4">Certificamos com honra o pescador</p>
