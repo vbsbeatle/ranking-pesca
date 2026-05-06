@@ -1,4 +1,5 @@
 import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css' // Ou o arquivo de CSS que você usa
 
 export const metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
         {children}
         {/* Este é o sensor que conta os acessos dos pescadores */}
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )
