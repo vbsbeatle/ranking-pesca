@@ -5,12 +5,10 @@ import { supabase } from '../../../lib/supabase'
 export default function AdminCampeonatos() {
   const [campeonatos, setCampeonatos] = useState<any[]>([])
   const [pescadoresGerais, setPescadoresGerais] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
-  const [aba, setAba] = useState('novo_camp') // novo_camp | inscricao | lancar
+  const [aba, setAba] = useState('novo_camp')
+  const [catsSelecionadas, setCatsSelecionadas] = useState<string[]>(['Tucunaré'])
 
-  useEffect(() => {
-    carregarDados()
-  }, [])
+  useEffect(() => { carregarDados() }, [])
 
   async function carregarDados() {
     const { data: c } = await supabase.from('campeonatos').select('*').order('created_at', { ascending: false })
@@ -19,7 +17,10 @@ export default function AdminCampeonatos() {
     if (p) setPescadoresGerais(p)
   }
 
-  // CRIAR CAMPEONATO
+  const toggleCat = (cat: string) => {
+    setCatsSelecionadas(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat])
+  }
+
   async function handleCriarCamp(e: any) {
     e.preventDefault()
     const f = e.target
@@ -28,27 +29,26 @@ export default function AdminCampeonatos() {
       data_inicio: f.inicio.value,
       data_fim: f.fim.value,
       cota_min: parseInt(f.cota_min.value),
-      cota_max: parseInt(f.cota_max.value)
+      cota_max: parseInt(f.cota_max.value),
+      categorias: catsSelecionadas
     }])
-    if (!error) { alert("Campeonato criado!"); f.reset(); carregarDados(); }
+    if (!error) { alert("Campeonato criado!"); carregarDados(); }
   }
 
-  // INSCREVER PESCADOR
   async function handleInscricao(e: any) {
     e.preventDefault()
     const f = e.target
     const p = pescadoresGerais.find(x => x.id === f.pescador_id.value)
+    const camp = campeonatos.find(x => x.id === f.camp_id.value)
     const { error } = await supabase.from('campeonato_participantes').insert([{
       campeonato_id: f.camp_id.value,
       pescador_id: p.id,
       nome_pescador: p.nome_completo,
-      categorias_inscritas: ['Tucunaré', 'Dourado', 'Traíra', 'Trairão'] // Default todas
+      categorias_inscritas: camp.categorias
     }])
-    if (error) alert("Pescador já está nesse campeonato!")
-    else alert("Inscrito com sucesso!")
+    if (error) alert("Pescador já inscrito!"); else alert("Inscrito!");
   }
 
-  // LANÇAR PEIXE SIMPLIFICADO
   async function handleLancamento(e: any) {
     e.preventDefault()
     const f = e.target
@@ -64,28 +64,40 @@ export default function AdminCampeonatos() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white p-4 md:p-8 font-sans">
-      <h1 className="text-2xl font-black uppercase italic text-yellow-400 mb-8 border-l-4 border-yellow-400 pl-4">Admin de Campeonatos PeixeBook</h1>
+    <div className="min-h-screen bg-zinc-900 text-white p-8 font-sans">
+      <h1 className="text-2xl font-black uppercase italic text-yellow-400 mb-8">Admin de Campeonatos</h1>
       
-      <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-        <button onClick={() => setAba('novo_camp')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 ${aba === 'novo_camp' ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-700'}`}>1. Criar Campeonato</button>
-        <button onClick={() => setAba('inscricao')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 ${aba === 'inscricao' ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-700'}`}>2. Inscrever Pescadores</button>
-        <button onClick={() => setAba('lancar')} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 ${aba === 'lancar' ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-700'}`}>3. Lançar Captura</button>
+      <div className="flex gap-2 mb-8">
+        {['novo_camp', 'inscricao', 'lancar'].map(t => (
+          <button key={t} onClick={() => setAba(t)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase border-2 ${aba === t ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-700'}`}>
+            {t.replace('_', ' ')}
+          </button>
+        ))}
       </div>
 
-      <div className="max-w-xl bg-zinc-800 p-6 rounded-2xl shadow-2xl border border-zinc-700">
+      <div className="max-w-xl bg-zinc-800 p-6 rounded-3xl border border-zinc-700">
         {aba === 'novo_camp' && (
           <form onSubmit={handleCriarCamp} className="space-y-4 text-black">
             <input name="nome" placeholder="Nome do Torneio" required className="w-full p-3 rounded font-bold" />
-            <div className="grid grid-cols-2 gap-4">
-               <div><label className="text-[10px] text-white">Início</label><input name="inicio" type="date" required className="w-full p-3 rounded font-bold" /></div>
-               <div><label className="text-[10px] text-white">Fim</label><input name="fim" type="date" required className="w-full p-3 rounded font-bold" /></div>
+            <div className="grid grid-cols-2 gap-4 text-white">
+               <div><label className="text-[10px] uppercase font-bold">Início</label><input name="inicio" type="date" required className="w-full p-3 rounded text-black" /></div>
+               <div><label className="text-[10px] uppercase font-bold">Fim</label><input name="fim" type="date" required className="w-full p-3 rounded text-black" /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-               <input name="cota_min" type="number" placeholder="Cota Mínima" className="w-full p-3 rounded font-bold" />
-               <input name="cota_max" type="number" placeholder="Cota Máxima" className="w-full p-3 rounded font-bold" />
+               <input name="cota_min" type="number" placeholder="Cota Mín." className="w-full p-3 rounded font-bold" />
+               <input name="cota_max" type="number" placeholder="Cota Máx." className="w-full p-3 rounded font-bold" />
             </div>
-            <button className="w-full bg-yellow-400 text-black p-4 rounded font-black uppercase shadow-lg">Criar Campeonato</button>
+            <div className="p-4 bg-zinc-700 rounded-xl">
+               <p className="text-white text-[10px] font-black uppercase mb-3">Categorias Incluídas:</p>
+               <div className="flex gap-2">
+                 {['Tucunaré', 'Trairas', 'Dourado'].map(c => (
+                   <label key={c} className="flex items-center gap-2 text-xs text-white cursor-pointer">
+                     <input type="checkbox" checked={catsSelecionadas.includes(c)} onChange={() => toggleCat(c)} /> {c}
+                   </label>
+                 ))}
+               </div>
+            </div>
+            <button className="w-full bg-yellow-400 text-black p-4 rounded-xl font-black uppercase">Salvar Campeonato</button>
           </form>
         )}
 
@@ -99,7 +111,7 @@ export default function AdminCampeonatos() {
                <option value="">Selecione o Pescador</option>
                {pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
             </select>
-            <button className="w-full bg-white text-black p-4 rounded font-black uppercase shadow-lg">Inscrever no Torneio</button>
+            <button className="w-full bg-white text-black p-4 rounded-xl font-black uppercase">Inscrever Pescador</button>
           </form>
         )}
 
@@ -115,12 +127,11 @@ export default function AdminCampeonatos() {
             </select>
             <select name="especie" required className="w-full p-3 rounded font-bold">
                <option value="Tucunaré">Tucunaré</option>
+               <option value="Trairas">Trairas</option>
                <option value="Dourado">Dourado</option>
-               <option value="Traíra">Traíra</option>
-               <option value="Trairão">Trairão</option>
             </select>
             <input name="tamanho" type="number" step="0.1" placeholder="Tamanho em CM" required className="w-full p-3 rounded font-bold" />
-            <button className="w-full bg-yellow-400 text-black p-4 rounded font-black uppercase shadow-lg">Registrar Captura</button>
+            <button className="w-full bg-yellow-400 text-black p-4 rounded-xl font-black uppercase">Lançar Peixe</button>
           </form>
         )}
       </div>
