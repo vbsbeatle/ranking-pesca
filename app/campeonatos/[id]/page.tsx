@@ -61,10 +61,16 @@ export default function DetalheCampeonato() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-10 font-sans pb-40">
-      <header className="max-w-5xl mx-auto mb-10 border-b border-zinc-900 pb-8 text-center">
-        <h1 className="text-4xl md:text-6xl font-black uppercase italic text-yellow-400 mb-2">{camp.nome}</h1>
-        <p className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">Cota: {camp.cota_min} a {camp.cota_max} peixes</p>
-      </header>
+  <header className="max-w-5xl mx-auto mb-10 border-b border-zinc-900 pb-8 flex flex-col items-center text-center">
+  {camp.url_logo && (
+    <img src={camp.url_logo} alt="Logo Torneio" className="h-24 md:h-32 w-auto mb-6 rounded-2xl shadow-2xl border-2 border-zinc-800" />
+  )}
+  <h1 className="text-4xl md:text-6xl font-black uppercase italic text-yellow-400 mb-2 leading-none">{camp.nome}</h1>
+  <div className="flex gap-4 text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-2">
+     <span>📅 {new Date(camp.data_inicio).toLocaleDateString()} a {new Date(camp.data_fim).toLocaleDateString()}</span>
+     <span className="text-yellow-600">🏆 Cota: {camp.cota_min}-{camp.cota_max} Peixes</span>
+  </div>
+</header>
 
       {/* ABAS DE CATEGORIA */}
       <div className="max-w-5xl mx-auto flex justify-center gap-2 mb-10 overflow-x-auto pb-4">
