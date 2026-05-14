@@ -75,7 +75,7 @@ export default function PaginaPescadorTorneio() {
           <div className="relative mb-6">
              <div className="h-28 w-28 md:h-40 md:w-40 rounded-[2.5rem] overflow-hidden border-4 border-yellow-400 shadow-[0_0_40px_rgba(234,179,8,0.3)]">
                 {/* USA A FOTO DO CADASTRO DO PEIXEBOOK */}
-                <img src={dados.pesq.url_foto_perfil || 'https://via.placeholder.com/150'} className="h-full w-full object-cover" alt="Perfil" />
+                <img src={dados.pesq.url_foto || 'https://via.placeholder.com/150'} className="h-full w-full object-cover" alt="Perfil" />
              </div>
              <div className="absolute -bottom-2 -right-2 bg-black border-2 border-yellow-400 text-yellow-400 px-3 py-1 rounded-full font-black text-[8px] uppercase">Membro Oficial</div>
           </div>
