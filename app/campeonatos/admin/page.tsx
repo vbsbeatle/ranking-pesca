@@ -39,21 +39,29 @@ export default function AdminCampeonatos() {
   }
 
   // NOVO: UPLOAD DA FOTO DE PERFIL DO PESCADOR
-  async function handleUploadPerfil(e: any, pescadorId: string) {
+ async function handleUploadPerfil(e: any, pescadorId: string) {
     try {
       const file = e.target.files[0]
       if (!file) return
-      const filePath = `perfis/${pescadorId}-${Math.random()}.jpg`
-      const { error } = await supabase.storage.from('perfis').upload(filePath, file)
-      if (error) throw error
-      const { data } = supabase.storage.from('perfis').getPublicUrl(filePath)
-      const { error: updateErr } = await supabase.from('pescadores').update({ url_foto_perfil: data.publicUrl }).eq('id', pescadorId)
-      if (updateErr) throw updateErr
-      alert("Foto do pescador atualizada!")
-      carregarDados()
-    } catch (err: any) { alert("Erro no upload: " + err.message) }
-  }
+      
+      const fileName = `${Date.now()}-p` // Padrão do seu sistema
+      const { error: uploadError } = await supabase.storage
+        .from('fotos-pesca') // Balde que seu sistema já usa
+        .upload(fileName, file)
 
+      if (uploadError) throw uploadError
+
+      const { data } = supabase.storage.from('fotos-pesca').getPublicUrl(fileName)
+      
+      // SALVA NA COLUNA url_foto (Padrão do seu sistema)
+      const { error: updateErr } = await supabase.from('pescadores')
+        .update({ url_foto: data.publicUrl })
+        .eq('id', pescadorId)
+
+      if (updateErr) throw updateErr
+      alert("Foto do pescador atualizada!"); carregarDados();
+    } catch (err: any) { alert("Erro: " + err.message) }
+  }
   async function handleSalvarCamp(e: any) {
     e.preventDefault()
     const dados = {
