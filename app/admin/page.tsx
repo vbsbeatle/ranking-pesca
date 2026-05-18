@@ -13,11 +13,14 @@ export default function AdminPage() {
   const [grupo, setGrupo] = useState("Tucunaré")
 
   const subMap: any = {
-    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
+    "Tucunaré": [
+      "Açu", "Paca", "Azul", "Amarelo", "Borboleta", 
+      "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido" // Adicionado aqui
+    ],
     "Dourado": ["Dourado comum", "Tabarana"],
     "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
-  }
+    }
 
   useEffect(() => {
     async function checkUser() {
