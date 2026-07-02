@@ -31,23 +31,19 @@ export default function DetalheCampeonato() {
 
   function processarRanking(c: any, parts: any[], caps: any[], categoria: string) {
     const lista = parts.map(p => {
-      // Filtra os peixes do pescador desta espécie específica
       const peixesCat = caps
         .filter(cap => cap.pescador_id === p.pescador_id && cap.especie === categoria)
-        .sort((a, b) => b.tamanho_cm - a.tamanho_cm) // Organiza do MAIOR para o MENOR
+        .sort((a, b) => b.tamanho_cm - a.tamanho_cm)
 
-      // USA O VALOR DINÂMICO QUE VOCÊ CADASTROU (c.cota_max)
-      // Se tiver 10 peixes, ele pega apenas os maiores até o limite da cota configurada
+      // Corta dinamicamente na cota máxima do campeonato
       const peixesValidos = peixesCat.slice(0, c.cota_max)
-      
-      // Soma apenas a pontuação da cota permitida
       const soma = peixesValidos.reduce((acc, cur) => acc + parseFloat(cur.tamanho_cm), 0)
       
       return { 
         ...p, 
         pontuacao: soma, 
         qtd: peixesCat.length, 
-        atingiuCota: peixesCat.length >= c.cota_min // Usa a cota mínima cadastrada
+        atingiuCota: peixesCat.length >= c.cota_min
       }
     })
 
@@ -70,20 +66,18 @@ export default function DetalheCampeonato() {
     <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-10 font-sans pb-40">
       <header className="max-w-5xl mx-auto mb-10 border-b border-zinc-900 pb-8 flex flex-col items-center text-center">
         {camp.url_logo && (
-          <img src={camp.url_logo} alt="Logo Torneio" className="h-24 md:h-32 w-auto mb-6 rounded-2xl shadow-2xl border-2 border-zinc-800" />
+          <img src={camp.url_logo} alt="Logo" className="h-24 md:h-32 w-auto mb-6 rounded-2xl border-2 border-zinc-800" />
         )}
         <h1 className="text-4xl md:text-6xl font-black uppercase italic text-yellow-400 mb-2 leading-none">{camp.nome}</h1>
         <div className="flex gap-4 text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-2">
            <span>📅 {new Date(camp.data_inicio).toLocaleDateString()} a {new Date(camp.data_fim).toLocaleDateString()}</span>
-           {/* TEXTO MOSTRANDO A COTA DO TORNEIO DINAMICAMENTE */}
            <span className="text-yellow-600">🏆 Cota Máxima: Soma dos {camp.cota_max} Maiores Peixes</span>
         </div>
       </header>
 
-      {/* ABAS DE CATEGORIA */}
       <div className="max-w-5xl mx-auto flex justify-center gap-2 mb-10 overflow-x-auto pb-4">
         {camp.categorias.map((cat: string) => (
-          <button key={cat} onClick={() => mudarAba(cat)} className={`px-6 py-3 rounded-full font-black uppercase text-xs border-2 transition-all ${catAtiva === cat ? 'bg-yellow-400 text-black border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'border-zinc-800 text-zinc-500'}`}>
+          <button key={cat} onClick={() => mudarAba(cat)} className={`px-6 py-3 rounded-full font-black uppercase text-xs border-2 transition-all ${catAtiva === cat ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-800 text-zinc-500'}`}>
             {cat}
           </button>
         ))}
@@ -99,11 +93,10 @@ export default function DetalheCampeonato() {
           </div>
         )}
 
-        {/* RANKING */}
         <div className="space-y-4">
           <h2 className="text-zinc-600 font-black uppercase italic mb-6">Ranking de {catAtiva}</h2>
           {ranking.map((r, i) => (
-            <div key={r.id} className={`p-6 rounded-[35px] flex items-center justify-between border-2 transition-all ${i === 0 ? 'bg-zinc-900 border-yellow-400 shadow-xl' : 'bg-zinc-900/40 border-zinc-900'}`}>
+            <div key={r.id} className={`p-6 rounded-[35px] flex items-center justify-between border-2 ${i === 0 ? 'bg-zinc-900 border-yellow-400 shadow-xl' : 'bg-zinc-900/40 border-zinc-900'}`}>
                <div className="flex items-center gap-6">
                   <span className={`text-4xl font-black italic ${i === 0 ? 'text-yellow-400' : 'text-zinc-800'}`}>{i + 1}º</span>
                   <div>
