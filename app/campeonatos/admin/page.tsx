@@ -17,7 +17,6 @@ export default function AdminCampeonatos() {
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   
-  // Voltando com os campos de cota no estado inicial
   const [formData, setFormData] = useState({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
 
   useEffect(() => {
@@ -71,7 +70,7 @@ export default function AdminCampeonatos() {
       await supabase.storage.from('fotos-pesca').upload(fileName, file)
       const { data } = supabase.storage.from('fotos-pesca').getPublicUrl(fileName)
       await supabase.from('pescadores').update({ url_foto: data.publicUrl }).eq('id', pescadorId)
-      alert("Foto atualizada!"); carregarDados();
+      alert("Foto do pescador atualizada!"); carregarDados();
     } catch (err: any) { alert(err.message) }
   }
 
@@ -81,8 +80,8 @@ export default function AdminCampeonatos() {
       nome: formData.nome, 
       data_inicio: formData.inicio, 
       data_fim: formData.fim,
-      cota_min: parseInt(formData.cota_min), // Puxa do formulário dinamicamente
-      cota_max: parseInt(formData.cota_max), // Puxa do formulário dinamicamente
+      cota_min: parseInt(formData.cota_min), 
+      cota_max: parseInt(formData.cota_max), 
       categorias: catsSelecionadas, 
       url_logo: formData.url_logo
     }
@@ -151,7 +150,6 @@ export default function AdminCampeonatos() {
                   <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Fim</label><input type="date" value={formData.fim} onChange={e => setFormData({...formData, fim: e.target.value})} className="p-3 rounded-xl font-bold bg-white" /></div>
                 </div>
                 
-                {/* CAMPOS DE COTA RESTAURADOS NO LAYOUT */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Mínima</label><input type="number" placeholder="Mínima" value={formData.cota_min} onChange={e => setFormData({...formData, cota_min: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
                   <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Máxima</label><input type="number" placeholder="Máxima" value={formData.cota_max} onChange={e => setFormData({...formData, cota_max: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
