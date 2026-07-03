@@ -31,7 +31,6 @@ export default function AdminCampeonatos() {
     checkUser()
   }, [])
 
-  // Força a recarga de dados quando você muda de aba (ajuda a sincronizar os inscritos)
   useEffect(() => {
     if (user) carregarDados()
   }, [aba])
@@ -40,7 +39,7 @@ export default function AdminCampeonatos() {
     const { data: c } = await supabase.from('campeonatos').select('*').order('created_at', { ascending: false })
     const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
     const { data: cap } = await supabase.from('capturas_torneio').select('*').order('created_at', { ascending: false })
-    const { data: ins } = await supabase.from('campeonato_participantes').select('*').order('created_at', { ascending: false })
+    const { data: ins } = await supabase.from('campeonato_participantes').select('*')
     
     if (c) setCampeonatos(c)
     if (p) setPescadoresGerais(p)
@@ -188,8 +187,11 @@ export default function AdminCampeonatos() {
               <form onSubmit={async (e:any) => {
                 e.preventDefault();
                 const pSel = pescadoresGerais.find(x => x.id === e.target.pescador_id.value);
+                const campId = e.target.camp_id.value;
+                if (!pSel || !campId) return;
+
                 await supabase.from('campeonato_participantes').insert([{ 
-                  campeonato_id: e.target.camp_id.value, 
+                  campeonato_id: campId, 
                   pescador_id: pSel.id, 
                   nome_pescador: pSel.nome_completo 
                 }]);
@@ -230,17 +232,21 @@ export default function AdminCampeonatos() {
                 <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
                   <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Pescadores Inscritos</h3>
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {inscritosTorneio.map(ins => (
-                      <div key={ins.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">
-                            {campeonatos.find(c => c.id === ins.campeonato_id)?.nome || 'Torneio'}
-                          </p>
-                          <p className="font-black uppercase italic text-sm">{ins.nome_pescador}</p>
+                    {inscritosTorneio.map(ins => {
+                      // BUSCA INTELIGENTE DE SEGURANÇA: Se a coluna de nome falhar, ele cruza com a lista geral de pescadores
+                      const nomeTorneio = campeonatos.find(c => c.id === ins.campeonato_id || c.id === ins.campeonato)?.nome || 'Torneio';
+                      const nomePescador = ins.nome_pescador || pescadoresGerais.find(p => p.id === ins.pescador_id || p.id === ins.pescador)?.nome_completo || 'Pescador Desconhecido';
+                      
+                      return (
+                        <div key={ins.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">{nomeTorneio}</p>
+                            <p className="font-black uppercase italic text-sm">{nomePescador}</p>
+                          </div>
+                          <button onClick={() => removerInscricao(ins.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm transition-all">🗑️</button>
                         </div>
-                        <button onClick={() => removerInscricao(ins.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm transition-all">🗑️</button>
-                      </div>
-                    ))}
+                      )
+                    })}
                     {inscritosTorneio.length === 0 && <p className="text-center py-10 text-zinc-700 italic font-black uppercase text-xs">Nenhum pescador inscrito em torneios.</p>}
                   </div>
                 </div>
