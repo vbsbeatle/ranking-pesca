@@ -31,6 +31,11 @@ export default function AdminCampeonatos() {
     checkUser()
   }, [])
 
+  // Força a recarga de dados quando você muda de aba (ajuda a sincronizar os inscritos)
+  useEffect(() => {
+    if (user) carregarDados()
+  }, [aba])
+
   async function carregarDados() {
     const { data: c } = await supabase.from('campeonatos').select('*').order('created_at', { ascending: false })
     const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
@@ -74,7 +79,7 @@ export default function AdminCampeonatos() {
       await supabase.storage.from('fotos-pesca').upload(fileName, file)
       const { data } = supabase.storage.from('fotos-pesca').getPublicUrl(fileName)
       await supabase.from('pescadores').update({ url_foto: data.publicUrl }).eq('id', pescadorId)
-      alert("Foto do pescador updated!"); carregarDados();
+      alert("Foto do pescador atualizada!"); carregarDados();
     } catch (err: any) { alert("Erro: " + err.message) }
   }
 
@@ -102,7 +107,6 @@ export default function AdminCampeonatos() {
     }
   }
 
-  // NOVA FUNÇÃO: REMOVER PESCADOR DO TORNEIO
   async function removerInscricao(id: string) {
     if (confirm("Deseja realmente desinscrever este pescador do torneio?")) {
       const { error } = await supabase.from('campeonato_participantes').delete().eq('id', id)
@@ -183,8 +187,14 @@ export default function AdminCampeonatos() {
             {aba === 'inscricao' && (
               <form onSubmit={async (e:any) => {
                 e.preventDefault();
-                await supabase.from('campeonato_participantes').insert([{ campeonato_id: e.target.camp_id.value, pescador_id: e.target.pescador_id.value, nome_pescador: pescadoresGerais.find(x => x.id === e.target.pescador_id.value).nome_completo }]);
-                alert("Inscrito!"); carregarDados();
+                const pSel = pescadoresGerais.find(x => x.id === e.target.pescador_id.value);
+                await supabase.from('campeonato_participantes').insert([{ 
+                  campeonato_id: e.target.camp_id.value, 
+                  pescador_id: pSel.id, 
+                  nome_pescador: pSel.nome_completo 
+                }]);
+                alert("Inscrito!"); 
+                carregarDados();
               }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
                 <select name="camp_id" className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
                   <option value="">Selecione o Torneio</option>
@@ -217,7 +227,6 @@ export default function AdminCampeonatos() {
 
           <div className="lg:col-span-7">
              {aba === 'inscricao' ? (
-                // LISTA DE INSCRITOS ATUALIZADA COM OPÇÃO DE DESINSCREVER
                 <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
                   <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Pescadores Inscritos</h3>
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
