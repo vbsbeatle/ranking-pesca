@@ -12,6 +12,7 @@ export default function AdminCampeonatos() {
   const [campeonatos, setCampeonatos] = useState<any[]>([])
   const [pescadoresGerais, setPescadoresGerais] = useState<any[]>([])
   const [capturasTorneio, setCapturasTorneio] = useState<any[]>([])
+  const [inscritosTorneio, setInscritosTorneio] = useState<any[]>([])
   const [aba, setAba] = useState('novo_camp')
   const [catsSelecionadas, setCatsSelecionadas] = useState<string[]>(['Tucunaré'])
   const [editandoId, setEditandoId] = useState<string | null>(null)
@@ -34,9 +35,12 @@ export default function AdminCampeonatos() {
     const { data: c } = await supabase.from('campeonatos').select('*').order('created_at', { ascending: false })
     const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
     const { data: cap } = await supabase.from('capturas_torneio').select('*').order('created_at', { ascending: false })
+    const { data: ins } = await supabase.from('campeonato_participantes').select('*').order('created_at', { ascending: false })
+    
     if (c) setCampeonatos(c)
     if (p) setPescadoresGerais(p)
     if (cap) setCapturasTorneio(cap)
+    if (ins) setInscritosTorneio(ins)
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -70,8 +74,8 @@ export default function AdminCampeonatos() {
       await supabase.storage.from('fotos-pesca').upload(fileName, file)
       const { data } = supabase.storage.from('fotos-pesca').getPublicUrl(fileName)
       await supabase.from('pescadores').update({ url_foto: data.publicUrl }).eq('id', pescadorId)
-      alert("Foto do pescador atualizada!"); carregarDados();
-    } catch (err: any) { alert(err.message) }
+      alert("Foto do pescador updated!"); carregarDados();
+    } catch (err: any) { alert("Erro: " + err.message) }
   }
 
   async function handleSalvarCamp(e: any) {
@@ -95,6 +99,15 @@ export default function AdminCampeonatos() {
     if (confirm("Deseja realmente excluir este peixe do torneio?")) {
       const { error } = await supabase.from('capturas_torneio').delete().eq('id', id)
       if (!error) { alert("Captura removida!"); carregarDados(); }
+    }
+  }
+
+  // NOVA FUNÇÃO: REMOVER PESCADOR DO TORNEIO
+  async function removerInscricao(id: string) {
+    if (confirm("Deseja realmente desinscrever este pescador do torneio?")) {
+      const { error } = await supabase.from('campeonato_participantes').delete().eq('id', id)
+      if (!error) { alert("Pescador desinscrito com sucesso!"); carregarDados(); }
+      else { alert("Erro ao desinscrever: " + error.message) }
     }
   }
 
@@ -203,7 +216,26 @@ export default function AdminCampeonatos() {
           </div>
 
           <div className="lg:col-span-7">
-             {aba === 'ver_peixes' ? (
+             {aba === 'inscricao' ? (
+                // LISTA DE INSCRITOS ATUALIZADA COM OPÇÃO DE DESINSCREVER
+                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
+                  <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Pescadores Inscritos</h3>
+                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                    {inscritosTorneio.map(ins => (
+                      <div key={ins.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">
+                            {campeonatos.find(c => c.id === ins.campeonato_id)?.nome || 'Torneio'}
+                          </p>
+                          <p className="font-black uppercase italic text-sm">{ins.nome_pescador}</p>
+                        </div>
+                        <button onClick={() => removerInscricao(ins.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm transition-all">🗑️</button>
+                      </div>
+                    ))}
+                    {inscritosTorneio.length === 0 && <p className="text-center py-10 text-zinc-700 italic font-black uppercase text-xs">Nenhum pescador inscrito em torneios.</p>}
+                  </div>
+                </div>
+             ) : aba === 'ver_peixes' ? (
                 <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
                   <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Gerenciar Peixes do Torneio</h3>
                   <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
