@@ -25,7 +25,6 @@ export default function DetalheCampeonato() {
       if (participantes && capturas) {
         setTodosParticipantes(participantes)
         setTodasCapturas(capturas)
-        // Inicia calculando o Ranking Geral (Sacola)
         processarRanking(c, participantes, capturas, 'Geral (Sacola)')
       }
       setLoading(false)
@@ -38,18 +37,15 @@ export default function DetalheCampeonato() {
       let peixesFiltrados = []
 
       if (categoria === 'Geral (Sacola)') {
-        // PEGA TUDO: independente da espécie
         peixesFiltrados = caps
           .filter(cap => cap.pescador_id === p.pescador_id || cap.pescador === p.pescador_id)
           .sort((a, b) => b.tamanho_cm - a.tamanho_cm)
       } else {
-        // FILTRA POR ESPÉCIE ESPECÍFICA
         peixesFiltrados = caps
           .filter(cap => (cap.pescador_id === p.pescador_id || cap.pescador === p.pescador_id) && cap.especie === categoria)
           .sort((a, b) => b.tamanho_cm - a.tamanho_cm)
       }
 
-      // Aplica a cota do torneio (Geralmente 5 peixes)
       const peixesValidos = peixesFiltrados.slice(0, c.cota_max || 5)
       const soma = peixesValidos.reduce((acc, cur) => acc + parseFloat(cur.tamanho_cm), 0)
       
@@ -58,13 +54,33 @@ export default function DetalheCampeonato() {
         pontuacao: soma, 
         qtd: peixesFiltrados.length, 
         atingiuCota: peixesFiltrados.length >= (c.cota_min || 1),
-        detalhePeixes: peixesValidos // Guarda os peixes da sacola para exibir na tela
+        detalhePeixes: peixesValidos 
       }
     })
 
-    setRanking(lista.sort((a, b) => b.pontuacao - a.pontuacao))
+    // 🔥 NOVA FUNÇÃO DE ORDENAÇÃO COM CRITÉRIO DE DESEMPATE SEGUIDO A RISCA
+    const rankingOrdenado = lista.sort((a, b) => {
+      // 1º Critério: Pontuação Total (Soma da cota)
+      if (b.pontuacao !== a.pontuacao) {
+        return b.pontuacao - a.pontuacao
+      }
 
-    // Big Fish (Maior absoluto se for Geral, ou maior da espécie se for aba específica)
+      // 2º Critério: Comparação peixe por peixe (Maior peixe, depois 2º maior...)
+      const maxPeixes = Math.max(a.detalhePeixes.length, b.detalhePeixes.length)
+      for (let k = 0; k < maxPeixes; k++) {
+        const tamA = a.detalhePeixes[k]?.tamanho_cm || 0
+        const tamB = b.detalhePeixes[k]?.tamanho_cm || 0
+        
+        if (tamB !== tamA) {
+          return tamB - tamA // Quem tiver o maior peixe nessa posição passa na frente
+        }
+      }
+
+      return 0 // Empate absoluto se todos os peixes forem idênticos
+    })
+
+    setRanking(rankingOrdenado)
+
     const capsFiltradas = categoria === 'Geral (Sacola)' ? caps : caps.filter(cap => cap.especie === categoria)
     const maior = [...capsFiltradas].sort((a, b) => b.tamanho_cm - a.tamanho_cm)[0]
     setBigFish(maior)
@@ -77,7 +93,6 @@ export default function DetalheCampeonato() {
 
   if (loading || !camp) return <div className="p-20 text-center font-black text-zinc-600 uppercase">Processando Placar Oficial...</div>
 
-  // Monta as abas incluindo a Geral na frente
   const abasDisponiveis = ['Geral (Sacola)', ...(camp.categorias || ['Tucunaré', 'Trairas', 'Dourado'])]
 
   return (
@@ -93,7 +108,6 @@ export default function DetalheCampeonato() {
         </div>
       </header>
 
-      {/* ABAS DE CATEGORIA */}
       <div className="max-w-5xl mx-auto flex justify-center gap-2 mb-10 overflow-x-auto pb-4">
         {abasDisponiveis.map((cat: string) => (
           <button key={cat} onClick={() => mudarAba(cat)} className={`px-6 py-3 rounded-full font-black uppercase text-xs border-2 whitespace-nowrap transition-all ${catAtiva === cat ? 'bg-yellow-400 text-black border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'border-zinc-800 text-zinc-500'}`}>
@@ -103,7 +117,6 @@ export default function DetalheCampeonato() {
       </div>
 
       <div className="max-w-5xl mx-auto">
-        {/* BIG FISH */}
         {bigFish && (
           <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-1 rounded-[40px] mb-12 shadow-xl">
             <div className="bg-zinc-950 rounded-[36px] p-6 flex justify-between items-center px-10">
@@ -121,7 +134,6 @@ export default function DetalheCampeonato() {
           </div>
         )}
 
-        {/* TABELA DE RANKING */}
         <div className="space-y-4">
           <h2 className="text-zinc-600 font-black uppercase italic mb-6">Classificação: {catAtiva}</h2>
           {ranking.map((r, i) => {
@@ -134,7 +146,6 @@ export default function DetalheCampeonato() {
                     <div>
                       <a href={`/campeonatos/${id}/pescador/${r.pescador_id || r.pescador}`} className="text-xl font-black uppercase italic hover:text-yellow-400 block transition-colors">{nomePescador}</a>
                       
-                      {/* EXIBIÇÃO DAS MEDIDAS DA SACOLA EM TAMANHO MENOR */}
                       {r.detalhePeixes && r.detalhePeixes.length > 0 ? (
                         <div className="flex flex-wrap gap-2 mt-2">
                           {r.detalhePeixes.map((peixe: any, idx: number) => (
