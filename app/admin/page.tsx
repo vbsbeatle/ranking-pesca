@@ -163,10 +163,10 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* MODAL DETALHADO DA CAPTURA PARA APROVAÇÃO */}
+      {/* MODAL DETALHADO DA CAPTURA PARA APROVAÇÃO (FOTOS INTEIRAS SEM CORTE) */}
       {capturaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 space-y-6 my-8 border-t-8 border-yellow-400 text-black max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-4xl w-full p-6 md:p-8 space-y-6 my-8 border-t-8 border-yellow-400 text-black max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b pb-4">
               <div>
                 <h3 className="text-2xl font-black uppercase italic">{capturaSelecionada.nome_pescador}</h3>
@@ -175,7 +175,7 @@ export default function AdminPage() {
               <button onClick={() => setCapturaSelecionada(null)} className="text-xl font-bold text-gray-400 hover:text-black">✕</button>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl text-xs font-bold">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-2xl text-xs font-bold">
               <div><span className="text-gray-400 uppercase text-[9px] block">Espécie/Subespécie</span>{capturaSelecionada.grupo_especie} - {capturaSelecionada.subespecie}</div>
               <div><span className="text-gray-400 uppercase text-[9px] block">Tamanho</span><span className="text-yellow-600 font-black text-base">{capturaSelecionada.tamanho_cm} CM</span></div>
               <div><span className="text-gray-400 uppercase text-[9px] block">Data Captura</span>{new Date(capturaSelecionada.data_captura).toLocaleDateString()}</div>
@@ -184,22 +184,26 @@ export default function AdminPage() {
               <div><span className="text-gray-400 uppercase text-[9px] block">Pescaria</span>{capturaSelecionada.tipo_pescaria}</div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-2xl text-xs space-y-2">
-              <p className="font-black text-yellow-600 uppercase text-[10px]">Equipamento Utilizado</p>
+            <div className="bg-gray-50 p-4 rounded-2xl text-xs space-y-1">
+              <p className="font-black text-yellow-600 uppercase text-[10px] mb-1">Equipamento Utilizado</p>
               <p><strong>Vara:</strong> {capturaSelecionada.vara}</p>
-              <p><strong>Carretilha:</strong> {capturaSelecionada.carretilha}</p>
-              <p><strong>Isca:</strong> {capturaSelecionada.isca}</p>
+              <p><strong>Carretilha/Molinete:</strong> {capturaSelecionada.carretilha}</p>
+              <p><strong>Isca Artificial:</strong> {capturaSelecionada.isca}</p>
             </div>
 
-            {/* FOTOS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Foto com Pescador</p>
-                <img src={capturaSelecionada.url_foto_captura} className="w-full h-48 object-cover rounded-xl border" />
+            {/* EXIBIÇÃO INTEGRAL DAS FOTOS (SENSÍVEL À ANÁLISE DE RÉGUA) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-zinc-900 p-3 rounded-2xl">
+                <p className="text-[10px] font-black uppercase text-yellow-400 mb-2 text-center">Foto com Pescador</p>
+                <div className="flex items-center justify-center bg-black rounded-xl overflow-hidden min-h-[300px]">
+                  <img src={capturaSelecionada.url_foto_captura} className="w-full max-h-[60vh] object-contain" alt="Pescador com Peixe" />
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Foto na Régua</p>
-                <img src={capturaSelecionada.url_foto_medicao} className="w-full h-48 object-cover rounded-xl border" />
+              <div className="bg-zinc-900 p-3 rounded-2xl">
+                <p className="text-[10px] font-black uppercase text-yellow-400 mb-2 text-center">Foto na Régua (Visão Completa)</p>
+                <div className="flex items-center justify-center bg-black rounded-xl overflow-hidden min-h-[300px]">
+                  <img src={capturaSelecionada.url_foto_medicao} className="w-full max-h-[60vh] object-contain" alt="Medição na Régua" />
+                </div>
               </div>
             </div>
 
@@ -207,13 +211,13 @@ export default function AdminPage() {
             <div className="flex gap-4 pt-4 border-t">
               <button 
                 onClick={() => handleAprovar(capturaSelecionada.id)} 
-                className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-green-700 transition-all shadow-lg"
+                className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-green-700 transition-all shadow-lg text-sm"
               >
                 ✓ Aprovar Captura
               </button>
               <button 
                 onClick={() => handleRecusar(capturaSelecionada.id)} 
-                className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-red-700 transition-all shadow-lg"
+                className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-red-700 transition-all shadow-lg text-sm"
               >
                 ✕ Recusar e Excluir
               </button>
