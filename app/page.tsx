@@ -19,15 +19,20 @@ export default function Home() {
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
   }
 
-  useEffect(() => {
-    async function carregar() {
-      const { data: r } = await supabase.from('recordes').select('*').order('tamanho_cm', { ascending: false })
-      if (r) setRecordes(r)
-      const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
-      if (p) setMembros(p)
+   useEffect(() => {
+    async function carregarRecordes() {
+      setLoading(true)
+      // FILTRO DE SEGURANÇA: Mostra apenas os aprovados ou antigos (null)
+      const { data } = await supabase
+        .from('recordes')
+        .select('*')
+        .or('status.eq.aprovado,status.is.null')
+        .order('tamanho_cm', { ascending: false })
+
+      if (data) setRecordes(data)
       setLoading(false)
     }
-    carregar()
+    carregarRecordes()
   }, [])
 
   // Lógica de filtragem com foco em Subespécie
