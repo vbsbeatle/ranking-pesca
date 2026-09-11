@@ -16,6 +16,13 @@ export default function EnviarCaptura() {
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
   }
 
+  const diretores = [
+    { nome: "Farid Neto", fone: "(033)99197-4444", link: "https://wa.me/5533991974444?text=Olá%20Farid,%20estou%20enviando%20o%20vídeo%20de%20soltura%20da%20minha%20captura%20cadastrada%20no%20PeixeBook." },
+    { nome: "Victor Sabbagh", fone: "(033)99929-3377", link: "https://wa.me/5533999293377?text=Olá%20Victor,%20estou%20enviando%20o%20vídeo%20de%20soltura%20da%20minha%20captura%20cadastrada%20no%20PeixeBook." },
+    { nome: "Rildo Flankin", fone: "(033)99919-5522", link: "https://wa.me/5533999195522?text=Olá%20Rildo,%20estou%20enviando%20o%20vídeo%20de%20soltura%20da%20minha%20captura%20cadastrada%20no%20PeixeBook." },
+    { nome: "Douglas Gomes", fone: "(033)99107-0656", link: "https://wa.me/5533991070656?text=Olá%20Douglas,%20estou%20enviando%20o%20vídeo%20de%20soltura%20da%20minha%20captura%20cadastrada%20no%20PeixeBook." }
+  ]
+
   useEffect(() => {
     async function carregarPescadores() {
       const { data } = await supabase.from('pescadores').select('*').order('nome_completo')
@@ -100,6 +107,30 @@ export default function EnviarCaptura() {
           <h1 className="text-3xl md:text-5xl font-black uppercase italic text-yellow-400">Registrar Captura</h1>
           <p className="text-zinc-400 text-xs font-bold uppercase tracking-widest mt-2">Envie seu troféu para análise da arbitragem</p>
         </header>
+
+        {/* QUADRO INFORMATIVO DE VÍDEO DE SOLTURA E WHATSAPP */}
+        <div className="bg-zinc-900 border-2 border-yellow-400 rounded-3xl p-6 mb-8 shadow-2xl">
+          <p className="text-xs md:text-sm font-bold text-zinc-200 leading-relaxed mb-4 text-center">
+             Enviei o vídeo com a soltura do peixe via WhatsApp para um dos diretores do <span className="text-yellow-400 font-black">Trilhas do Rio</span> para que sua captura seja aprovada:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {diretores.map(d => (
+              <a 
+                key={d.nome} 
+                href={d.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="bg-zinc-800 hover:bg-green-600 hover:text-white p-3 rounded-2xl border border-zinc-700 flex items-center justify-between transition-all group"
+              >
+                <div>
+                  <p className="text-[10px] font-black uppercase text-yellow-400 group-hover:text-white">{d.nome}</p>
+                  <p className="text-xs font-bold">{d.fone}</p>
+                </div>
+                <span className="text-lg">💬</span>
+              </a>
+            ))}
+          </div>
+        </div>
 
         {msgSuccess && (
           <div className="bg-yellow-400 text-black p-6 rounded-3xl mb-8 font-black text-center uppercase italic border-4 border-white animate-bounce shadow-2xl">
