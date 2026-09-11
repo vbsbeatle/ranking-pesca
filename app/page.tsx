@@ -13,26 +13,34 @@ export default function Home() {
   const [mostrarMembros, setMostrarMembros] = useState(false)
 
   const subMap: any = {
-    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
+    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido"],
     "Dourado": ["Dourado comum", "Tabarana"],
     "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
   }
 
-   useEffect(() => {
-    async function carregarRecordes() {
+  useEffect(() => {
+    async function carregarDados() {
       setLoading(true)
+      
       // FILTRO DE SEGURANÇA: Mostra apenas os aprovados ou antigos (null)
-      const { data } = await supabase
+      const { data: recData } = await supabase
         .from('recordes')
         .select('*')
         .or('status.eq.aprovado,status.is.null')
         .order('tamanho_cm', { ascending: false })
 
-      if (data) setRecordes(data)
+      // Carrega lista de membros/pescadores do clube
+      const { data: memData } = await supabase
+        .from('pescadores')
+        .select('*')
+        .order('nome_completo')
+
+      if (recData) setRecordes(recData)
+      if (memData) setMembros(memData)
       setLoading(false)
     }
-    carregarRecordes()
+    carregarDados()
   }, [])
 
   // Lógica de filtragem com foco em Subespécie
@@ -71,8 +79,13 @@ export default function Home() {
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
         
         <div className="flex flex-col sm:flex-row justify-end mb-6 gap-3">
-          <a href="https://forms.gle/Y6L88Vk7wdZv8spw9" target="_blank" className="bg-red-600 text-white px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-white text-center hover:bg-black transition-all">🎯 Registre sua captura</a>
-          <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-black text-center hover:bg-black hover:text-yellow-400 transition-all">📊 Ranking Completo</a>
+          {/* BOTÃO ATUALIZADO: APONTA PARA A NOVA PÁGINA DE CADASTRO DE CAPTURAS */}
+          <a href="/enviar-captura" className="bg-red-600 text-white px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-white text-center hover:bg-black transition-all">
+            🎯 Registre sua captura
+          </a>
+          <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-black text-center hover:bg-black hover:text-yellow-400 transition-all">
+            📊 Ranking Completo
+          </a>
         </div>
 
         {/* ATALHOS RÁPIDOS */}
