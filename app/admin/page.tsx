@@ -1,38 +1,43 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export default function AdminPage() {
   const [user, setUser] = useState<any>(null)
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
-  const [aba, setAba] = useState('pescador')
+  const [aba, setAba] = useState('aprovacoes')
   const [pescadores, setPescadores] = useState<any[]>([])
+  const [pendentes, setPendentes] = useState<any[]>([])
+  const [capturaSelecionada, setCapturaSelecionada] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
   const [grupo, setGrupo] = useState("Tucunaré")
 
   const subMap: any = {
-    "Tucunaré": [
-      "Açu", "Paca", "Azul", "Amarelo", "Borboleta", 
-      "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido" // Adicionado aqui
-    ],
+    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido"],
     "Dourado": ["Dourado comum", "Tabarana"],
     "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
-    }
+  }
 
   useEffect(() => {
     async function checkUser() {
       const { data } = await supabase.auth.getUser()
       if (data?.user) {
         setUser(data.user)
-        const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
-        if (p) setPescadores(p)
+        carregarDados()
       }
     }
     checkUser()
   }, [])
+
+  async function carregarDados() {
+    const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
+    const { data: pend } = await supabase.from('recordes').select('*').eq('status', 'pendente').order('created_at', { ascending: false })
+    if (p) setPescadores(p)
+    if (pend) setPendentes(pend)
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -56,52 +61,32 @@ export default function AdminPage() {
       await supabase.from('pescadores').insert([{ 
         nome_completo: form.nome.value, 
         cidade: form.cidade.value, 
-        senha: form.senha_membro.value, // NOVA COLUNA
+        senha: form.senha_membro.value,
         url_foto: url 
       }])
       
       setMsg('Membro salvo com sucesso!'); form.reset()
-      const { data } = await supabase.from('pescadores').select('*').order('nome_completo')
-      if (data) setPescadores(data)
+      carregarDados()
     } catch (err) { setMsg('Erro ao cadastrar') }
     setLoading(false)
   }
 
-  const handleCaptura = async (e: any) => {
-    e.preventDefault()
-    setLoading(true)
-    const form = e.target
-    try {
-      const fCap = form.f_cap.files[0]; const fMed = form.f_med.files[0]
-      const nCap = `${Date.now()}-c`; const nMed = `${Date.now()}-m`
-      await supabase.storage.from('fotos-pesca').upload(nCap, fCap)
-      await supabase.storage.from('fotos-pesca').upload(nMed, fMed)
-      const urlCap = supabase.storage.from('fotos-pesca').getPublicUrl(nCap).data.publicUrl
-      const urlMed = supabase.storage.from('fotos-pesca').getPublicUrl(nMed).data.publicUrl
-      const pSel = pescadores.find(p => p.id === form.pescador_id.value)
+  const handleAprovar = async (id: string) => {
+    if (confirm("Confirmar aprovação deste troféu?")) {
+      await supabase.from('recordes').update({ status: 'aprovado' }).eq('id', id)
+      alert("Captura Aprovada com Sucesso!")
+      setCapturaSelecionada(null)
+      carregarDados()
+    }
+  }
 
-      await supabase.from('recordes').insert([{
-        pescador_id: form.pescador_id.value,
-        nome_pescador: pSel.nome_completo,
-        grupo_especie: grupo,
-        subespecie: form.subespecie.value,
-        tamanho_cm: parseFloat(form.tamanho.value),
-        data_captura: form.data_captura.value,
-        local_captura: form.local_captura.value,
-        cidade: pSel.cidade,
-        estado: "MG",
-        modalidade_tipo: form.modalidade.value,
-        tipo_pescaria: form.tipo_pescaria.value,
-        carretilha: form.carretilha.value,
-        vara: form.vara.value,
-        isca: form.isca.value,
-        url_foto_captura: urlCap,
-        url_foto_medicao: urlMed,
-        nome_cientifico: "Registro Oficial TR"
-      }])
-      setMsg('Captura registrada!'); form.reset()
-    } catch (err) { setMsg('Erro ao salvar') }
-    setLoading(false)
+  const handleRecusar = async (id: string) => {
+    if (confirm("Deseja recusar e excluir permanentemente esta captura?")) {
+      await supabase.from('recordes').delete().eq('id', id)
+      alert("Captura Recusada e Removida!")
+      setCapturaSelecionada(null)
+      carregarDados()
+    }
   }
 
   if (!user) {
@@ -119,7 +104,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 pb-20 text-black font-sans">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6 px-2">
            <button onClick={() => { supabase.auth.signOut(); window.location.reload(); }} className="text-[10px] font-black uppercase text-gray-400">Sair / Logout</button>
            <a href="/admin/gerenciar" className="bg-red-600 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase italic shadow-lg hover:bg-black transition-all">🗑️ Gerenciar Recordes</a>
@@ -127,12 +112,40 @@ export default function AdminPage() {
 
         <div className="bg-white shadow-2xl rounded-2xl overflow-hidden border-b-8 border-yellow-400">
           <div className="flex bg-black">
-            <button onClick={() => setAba('pescador')} className={`flex-1 p-4 font-black uppercase italic text-xs ${aba === 'pescador' ? 'bg-yellow-400 text-black' : 'text-white'}`}>1. Novo Pescador</button>
-            <button onClick={() => setAba('captura')} className={`flex-1 p-4 font-black uppercase italic text-xs ${aba === 'captura' ? 'bg-yellow-400 text-black' : 'text-white'}`}>2. Nova Captura</button>
+            <button onClick={() => setAba('aprovacoes')} className={`flex-1 p-4 font-black uppercase italic text-xs ${aba === 'aprovacoes' ? 'bg-yellow-400 text-black' : 'text-white'}`}>⏳ Pendentes ({pendentes.length})</button>
+            <button onClick={() => setAba('pescador')} className={`flex-1 p-4 font-black uppercase italic text-xs ${aba === 'pescador' ? 'bg-yellow-400 text-black' : 'text-white'}`}>Novo Pescador</button>
           </div>
 
           <div className="p-8">
-            {aba === 'pescador' ? (
+            {/* ABA DE CAPTURAS PENDENTES */}
+            {aba === 'aprovacoes' && (
+              <div>
+                <h2 className="text-xl font-black uppercase italic mb-6">Capturas Aguardando Análise</h2>
+                <div className="space-y-4">
+                  {pendentes.map(item => (
+                    <div key={item.id} className="p-4 bg-gray-50 border-2 rounded-2xl flex items-center justify-between hover:border-yellow-400 transition-all">
+                      <div>
+                        <p className="font-black uppercase text-sm">{item.nome_pescador}</p>
+                        <p className="text-xs text-gray-500 font-bold uppercase">{item.grupo_especie} ({item.subespecie}) • <span className="text-yellow-600 font-black">{item.tamanho_cm} CM</span></p>
+                        <p className="text-[9px] text-gray-400 uppercase font-bold mt-1">Data: {new Date(item.data_captura).toLocaleDateString()} | Local: {item.local_captura}</p>
+                      </div>
+                      <button 
+                        onClick={() => setCapturaSelecionada(item)} 
+                        className="bg-black text-yellow-400 px-4 py-2 rounded-xl text-xs font-black uppercase italic hover:bg-yellow-400 hover:text-black transition-all"
+                      >
+                        Analisar →
+                      </button>
+                    </div>
+                  ))}
+                  {pendentes.length === 0 && (
+                    <p className="text-center py-10 text-gray-400 font-black uppercase italic text-xs">Nenhuma captura aguardando aprovação no momento.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ABA CADASTRO DE PESCADOR */}
+            {aba === 'pescador' && (
               <form onSubmit={handlePescador} className="space-y-4">
                 <input name="nome" placeholder="Nome do Pescador" required className="w-full p-3 border-2 rounded font-bold text-black" />
                 <input name="cidade" placeholder="Cidade Base" required className="w-full p-3 border-2 rounded font-bold text-black" />
@@ -143,48 +156,71 @@ export default function AdminPage() {
                 </div>
                 <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-lg">Salvar Membro</button>
               </form>
-            ) : (
-              <form onSubmit={handleCaptura} className="space-y-4">
-                <select name="pescador_id" required className="w-full p-3 border-2 rounded font-black bg-gray-50 text-black">
-                  <option value="">Selecione o Pescador</option>
-                  {pescadores.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
-                </select>
-                <div className="grid grid-cols-2 gap-4">
-                  <input name="data_captura" type="date" required className="w-full p-3 border-2 rounded font-bold text-xs text-black" />
-                  <input name="local_captura" placeholder="Local (Rio/Lagoa)" required className="w-full p-3 border-2 rounded font-bold text-xs text-black" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <select value={grupo} onChange={(e) => setGrupo(e.target.value)} className="p-3 border-2 rounded font-black text-xs text-black">
-                    {Object.keys(subMap).map(e => <option key={e} value={e}>{e}</option>)}
-                  </select>
-                  <select name="subespecie" className="p-3 border-2 rounded font-black text-xs text-black">
-                    {subMap[grupo].map((s:any) => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <input name="tamanho" type="number" step="0.1" placeholder="Medida (cm)" required className="p-3 border-2 rounded font-black text-black" />
-                  <select name="modalidade" className="p-3 border-2 rounded font-black text-xs text-black">
-                    <option value="Absoluto">Absoluto</option>
-                    <option value="Privado">Privado</option>
-                  </select>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl border-2 space-y-2">
-                  <select name="tipo_pescaria" className="w-full p-2 border rounded font-bold text-xs text-black"><option value="Embarcado">Embarcado</option><option value="Barranco">Barranco</option></select>
-                  <input name="carretilha" placeholder="Carretilha/Molinete" className="w-full p-2 border rounded text-xs text-black" />
-                  <input name="vara" placeholder="Vara" className="w-full p-2 border rounded text-xs text-black" />
-                  <input name="isca" placeholder="Isca Utilizada" className="w-full p-2 border rounded text-xs text-black" />
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-[9px] font-black uppercase text-gray-400 text-center">
-                  <div>Foto Peixe <input name="f_cap" type="file" required className="w-full mt-1" /></div>
-                  <div>Foto Medida <input name="f_med" type="file" required className="w-full mt-1" /></div>
-                </div>
-                <button disabled={loading} className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded shadow-xl">Registrar Captura</button>
-              </form>
             )}
+
             {msg && <p className="mt-4 text-center font-black text-sm text-yellow-600 uppercase italic animate-bounce">{msg}</p>}
           </div>
         </div>
       </div>
+
+      {/* MODAL DETALHADO DA CAPTURA PARA APROVAÇÃO */}
+      {capturaSelecionada && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 md:p-8 space-y-6 my-8 border-t-8 border-yellow-400 text-black max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b pb-4">
+              <div>
+                <h3 className="text-2xl font-black uppercase italic">{capturaSelecionada.nome_pescador}</h3>
+                <p className="text-xs font-bold text-gray-500 uppercase">{capturaSelecionada.cidade}</p>
+              </div>
+              <button onClick={() => setCapturaSelecionada(null)} className="text-xl font-bold text-gray-400 hover:text-black">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-2xl text-xs font-bold">
+              <div><span className="text-gray-400 uppercase text-[9px] block">Espécie/Subespécie</span>{capturaSelecionada.grupo_especie} - {capturaSelecionada.subespecie}</div>
+              <div><span className="text-gray-400 uppercase text-[9px] block">Tamanho</span><span className="text-yellow-600 font-black text-base">{capturaSelecionada.tamanho_cm} CM</span></div>
+              <div><span className="text-gray-400 uppercase text-[9px] block">Data Captura</span>{new Date(capturaSelecionada.data_captura).toLocaleDateString()}</div>
+              <div><span className="text-gray-400 uppercase text-[9px] block">Local</span>{capturaSelecionada.local_captura}</div>
+              <div><span className="text-gray-400 uppercase text-[9px] block">Categoria</span>{capturaSelecionada.modalidade_tipo}</div>
+              <div><span className="text-gray-400 uppercase text-[9px] block">Pescaria</span>{capturaSelecionada.tipo_pescaria}</div>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-2xl text-xs space-y-2">
+              <p className="font-black text-yellow-600 uppercase text-[10px]">Equipamento Utilizado</p>
+              <p><strong>Vara:</strong> {capturaSelecionada.vara}</p>
+              <p><strong>Carretilha:</strong> {capturaSelecionada.carretilha}</p>
+              <p><strong>Isca:</strong> {capturaSelecionada.isca}</p>
+            </div>
+
+            {/* FOTOS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Foto com Pescador</p>
+                <img src={capturaSelecionada.url_foto_captura} className="w-full h-48 object-cover rounded-xl border" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Foto na Régua</p>
+                <img src={capturaSelecionada.url_foto_medicao} className="w-full h-48 object-cover rounded-xl border" />
+              </div>
+            </div>
+
+            {/* BOTÕES DE AÇÃO */}
+            <div className="flex gap-4 pt-4 border-t">
+              <button 
+                onClick={() => handleAprovar(capturaSelecionada.id)} 
+                className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-green-700 transition-all shadow-lg"
+              >
+                ✓ Aprovar Captura
+              </button>
+              <button 
+                onClick={() => handleRecusar(capturaSelecionada.id)} 
+                className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-black uppercase italic hover:bg-red-700 transition-all shadow-lg"
+              >
+                ✕ Recusar e Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
