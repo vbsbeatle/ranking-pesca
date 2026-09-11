@@ -17,7 +17,14 @@ export default function PerfilPescador() {
       
       if (p) {
         setPescador(p)
-        const { data: c } = await supabase.from('recordes').select('*').eq('pescador_id', p.id).order('tamanho_cm', { ascending: false })
+        // FILTRO DE SEGURANÇA: Traz apenas peixes aprovados para o perfil
+        const { data: c } = await supabase
+          .from('recordes')
+          .select('*')
+          .eq('pescador_id', p.id)
+          .or('status.eq.aprovado,status.is.null')
+          .order('tamanho_cm', { ascending: false })
+          
         if (c) setCapturas(c)
       }
       setLoading(false)
