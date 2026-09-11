@@ -1,6 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
-import { supabase } from '../../../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export default function GerenciarPage() {
   const [user, setUser] = useState<any>(null)
@@ -11,7 +11,7 @@ export default function GerenciarPage() {
   const [editandoRecorde, setEditandoRecorde] = useState<any>(null)
 
   const subMap: any = {
-    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós"],
+    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido"],
     "Dourado": ["Dourado comum", "Tabarana"],
     "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
     "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
@@ -32,13 +32,19 @@ export default function GerenciarPage() {
 
   async function carregarDados() {
     const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
-    const { data: r } = await supabase.from('recordes').select('*').order('id', { ascending: false })
+    // Puxa os recordes aprovados ou registros antigos (status nulo)
+    const { data: r } = await supabase
+      .from('recordes')
+      .select('*')
+      .or('status.eq.aprovado,status.is.null')
+      .order('id', { ascending: false })
+
     setPescadores(p || [])
     setRecordes(r || [])
     setLoading(false)
   }
 
-  // --- NOVA FUNÇÃO: RESETAR SENHA DO PESCADOR ---
+  // --- FUNÇÃO: RESETAR SENHA DO PESCADOR ---
   async function resetarSenhaPescador(id: string, nome: string) {
     const novaSenhaTemp = prompt(`Digite uma senha temporária para ${nome}:`, "123456");
     
@@ -47,7 +53,7 @@ export default function GerenciarPage() {
         .from('pescadores')
         .update({ 
           senha: novaSenhaTemp, 
-          primeiro_login: true // Força ele a trocar quando logar
+          primeiro_login: true // Força o pescador a trocar quando logar
         })
         .eq('id', id);
 
@@ -62,6 +68,7 @@ export default function GerenciarPage() {
       nome_completo: editandoPescador.nome_completo,
       cidade: editandoPescador.cidade
     }).eq('id', editandoPescador.id).select()
+
     if (error) alert("Erro: " + error.message)
     else { alert("Dados atualizados!"); setEditandoPescador(null); carregarDados() }
   }
@@ -78,6 +85,7 @@ export default function GerenciarPage() {
       vara: editandoRecorde.vara,
       isca: editandoRecorde.isca
     }).eq('id', editandoRecorde.id).select()
+
     if (error) alert("Erro: " + error.message)
     else { alert("Captura atualizada!"); setEditandoRecorde(null); carregarDados() }
   }
@@ -142,7 +150,7 @@ export default function GerenciarPage() {
 
         {/* TABELA RECORDES */}
         <div className="bg-white rounded-xl shadow-lg border-2 border-yellow-400 overflow-hidden">
-          <div className="bg-yellow-400 text-black p-3 font-black text-[10px] uppercase italic tracking-widest">Histórico de Capturas</div>
+          <div className="bg-yellow-400 text-black p-3 font-black text-[10px] uppercase italic tracking-widest">Histórico de Capturas Ativas</div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-yellow-50 border-b font-black uppercase text-yellow-800 text-[9px]">
@@ -156,8 +164,8 @@ export default function GerenciarPage() {
                 {recordes.map(r => (
                   <tr key={r.id} className="border-b hover:bg-yellow-50/50">
                     <td className="p-4">
-                       <div className="font-bold uppercase">{r.nome_pescador}</div>
-                       <div className="font-black text-yellow-600 uppercase text-[9px]">{r.grupo_especie} ({r.subespecie})</div>
+                        <div className="font-bold uppercase">{r.nome_pescador}</div>
+                        <div className="font-black text-yellow-600 uppercase text-[9px]">{r.grupo_especie} ({r.subespecie})</div>
                     </td>
                     <td className="p-4 font-black text-sm">{r.tamanho_cm}cm</td>
                     <td className="p-4 text-right">
@@ -172,7 +180,7 @@ export default function GerenciarPage() {
         </div>
       </div>
 
-      {/* MODAIS DE EDIÇÃO (IGUAIS AOS ANTERIORES) */}
+      {/* MODAL EDITAR PESCADOR */}
       {editandoPescador && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <form onSubmit={salvarEdicaoPescador} className="bg-white p-8 rounded-2xl w-full max-w-sm space-y-4">
@@ -197,11 +205,11 @@ export default function GerenciarPage() {
                 {Object.keys(subMap).map(esp => <option key={esp} value={esp}>{esp}</option>)}
               </select>
               <select value={editandoRecorde.subespecie} onChange={e => setEditandoRecorde({...editandoRecorde, subespecie: e.target.value})} className="w-full p-2 border-2 rounded font-black text-xs text-black">
-                {subMap[editandoRecorde.grupo_especie].map((s: string) => <option key={s} value={s}>{s}</option>)}
+                {subMap[editandoRecorde.grupo_especie]?.map((s: string) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-            <input type="number" step="0.1" value={editandoRecorde.tamanho_cm} onChange={e => setEditandoRecorde({...editandoRecorde, tamanho_cm: e.target.value})} className="w-full p-3 border-2 rounded font-black text-black" />
-            <input value={editandoRecorde.local_captura} onChange={e => setEditandoRecorde({...editandoRecorde, local_captura: e.target.value})} className="w-full p-3 border-2 rounded font-bold text-black" />
+            <input type="number" step="0.5" value={editandoRecorde.tamanho_cm} onChange={e => setEditandoRecorde({...editandoRecorde, tamanho_cm: e.target.value})} className="w-full p-3 border-2 rounded font-black text-black" placeholder="Medida em CM" />
+            <input value={editandoRecorde.local_captura} onChange={e => setEditandoRecorde({...editandoRecorde, local_captura: e.target.value})} className="w-full p-3 border-2 rounded font-bold text-black" placeholder="Local" />
             <div className="flex gap-2">
               <button type="submit" className="w-full bg-black text-yellow-400 p-4 font-black uppercase rounded text-[10px]">Confirmar Atualização</button>
               <button type="button" onClick={() => setEditandoRecorde(null)} className="w-full bg-gray-100 font-black uppercase rounded text-[10px] text-black">Voltar</button>
