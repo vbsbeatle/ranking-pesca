@@ -4,11 +4,13 @@ import { supabase } from '../lib/supabase'
 
 export default function Home() {
   const [recordes, setRecordes] = useState<any[]>([])
+  const [pescadoresMap, setPescadoresMap] = useState<Record<string, any>>({})
   const [membros, setMembros] = useState<any[]>([])
   const [busca, setBusca] = useState('')
   const [filtroEspecie, setFiltroEspecie] = useState('Todas')
   const [subFiltro, setSubFiltro] = useState('Todas')
   const [filtroModalidade, setFiltroModalidade] = useState('Todas')
+  const [filtroSexo, setFiltroSexo] = useState('Todas') // 'Todas', 'Masculino', 'Feminino'
   const [loading, setLoading] = useState(true)
   const [mostrarMembros, setMostrarMembros] = useState(false)
 
@@ -23,38 +25,55 @@ export default function Home() {
     async function carregarDados() {
       setLoading(true)
       
-      // FILTRO DE SEGURANÇA: Mostra apenas os aprovados ou antigos (null)
+      // Carrega recordes aprovados ou antigos (null)
       const { data: recData } = await supabase
         .from('recordes')
         .select('*')
         .or('status.eq.aprovado,status.is.null')
         .order('tamanho_cm', { ascending: false })
 
-      // Carrega lista de membros/pescadores do clube
+      // Carrega membros com o sexo cadastrado
       const { data: memData } = await supabase
         .from('pescadores')
         .select('*')
         .order('nome_completo')
 
+      if (memData) {
+        setMembros(memData)
+        // Mapeia os pescadores por ID para consulta rápida
+        const map: Record<string, any> = {}
+        memData.forEach(p => { map[p.id] = p })
+        setPescadoresMap(map)
+      }
+
       if (recData) setRecordes(recData)
-      if (memData) setMembros(memData)
       setLoading(false)
     }
     carregarDados()
   }, [])
 
-  // Lógica de filtragem com foco em Subespécie
+  // Lógica de filtragem com suporte a Categoria de Sexo (Masculino / Feminino)
   const vistos = new Set()
   const listaRecordistas = recordes
+    .map(r => {
+      const pInfo = pescadoresMap[r.pescador_id]
+      const sexoPescador = pInfo?.sexo || 'Masculino' // Padrão Masculino se não informado
+      return { ...r, sexo: sexoPescador }
+    })
     .filter(r => {
       const mBusca = (r.nome_pescador || "").toLowerCase().includes(busca.toLowerCase())
       const mEsp = filtroEspecie === 'Todas' || r.grupo_especie === filtroEspecie
       const mSub = subFiltro === 'Todas' || r.subespecie === subFiltro
       const mMod = filtroModalidade === 'Todas' || r.modalidade_tipo === filtroModalidade
-      return mBusca && mEsp && mSub && mMod
+      const mSexo = filtroSexo === 'Todas' || r.sexo === filtroSexo
+      return mBusca && mEsp && mSub && mMod && mSexo
     })
     .filter(item => {
-      const chave = `${item.grupo_especie}-${item.subespecie}`
+      // Quando filtrado por 'Todas', exibe o maior peixe Masculino e o maior Feminino de cada subespécie
+      const chave = filtroSexo === 'Todas' 
+        ? `${item.grupo_especie}-${item.subespecie}-${item.sexo}`
+        : `${item.grupo_especie}-${item.subespecie}`
+      
       if (vistos.has(chave)) return false
       vistos.add(chave)
       return true
@@ -77,9 +96,7 @@ export default function Home() {
       </header>
 
       <main className="max-w-6xl mx-auto p-4 md:p-8 -mt-10">
-        
         <div className="flex flex-col sm:flex-row justify-end mb-6 gap-3">
-          {/* BOTÃO ATUALIZADO: APONTA PARA A NOVA PÁGINA DE CADASTRO DE CAPTURAS */}
           <a href="/enviar-captura" className="bg-red-600 text-white px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-white text-center hover:bg-black transition-all">
             🎯 Registre sua captura
           </a>
@@ -108,7 +125,7 @@ export default function Home() {
           </button>
         </section>
 
-        {/* CAIXA DE SUBESPÉCIES (SÓ APARECE PARA TUCUNARÉ) */}
+        {/* CAIXA DE SUBESPÉCIES */}
         {filtroEspecie === 'Tucunaré' && (
           <section className="mb-8 bg-black p-6 rounded-2xl shadow-xl animate-in fade-in zoom-in duration-300">
             <h3 className="text-yellow-400 font-black uppercase italic text-xs mb-4 text-center tracking-widest">Escolha a linhagem do Tucunaré:</h3>
@@ -121,13 +138,22 @@ export default function Home() {
           </section>
         )}
 
-        {/* FILTROS TÉCNICOS */}
-        <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-10 grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* FILTROS TÉCNICOS + CATEGORIA DE GÊNERO */}
+        <section className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 mb-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <input type="text" placeholder="🔍 Buscar Pescador..." className="p-3 bg-gray-50 border-2 rounded-lg font-bold outline-none focus:border-yellow-400" onChange={(e) => setBusca(e.target.value)} />
+          
           <select value={filtroEspecie} onChange={(e) => {setFiltroEspecie(e.target.value); setSubFiltro('Todas');}} className="p-3 bg-gray-50 border-2 rounded-lg font-black text-sm">
             <option value="Todas">Todas as Famílias</option>
             {Object.keys(subMap).map(e => <option key={e} value={e}>{e}</option>)}
           </select>
+
+          {/* FILTRO DE CATEGORIA MASCULINO / FEMININO */}
+          <select value={filtroSexo} onChange={(e) => setFiltroSexo(e.target.value)} className="p-3 bg-gray-50 border-2 rounded-lg font-black text-sm text-pink-600">
+            <option value="Todas">🚻 Geral (Masculino e Feminino)</option>
+            <option value="Masculino">👨 Categoria Masculino</option>
+            <option value="Feminino">👩 Categoria Feminino</option>
+          </select>
+
           <select value={filtroModalidade} onChange={(e) => setFiltroModalidade(e.target.value)} className="p-3 bg-gray-50 border-2 rounded-lg font-black text-sm text-yellow-600">
             <option value="Todas">Rio & Lagos (Geral)</option>
             <option value="Absoluto">🏆 Ranking Absoluto (Rio)</option>
@@ -144,7 +170,10 @@ export default function Home() {
           {mostrarMembros && (
             <div className="mt-4 p-6 bg-white border-2 border-yellow-400 rounded-2xl shadow-2xl grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
               {membros.map(m => (
-                <a key={m.id} href={`/pescador/${encodeURIComponent(m.nome_completo)}`} className="bg-gray-50 hover:bg-black hover:text-yellow-400 p-3 rounded-lg text-[9px] font-black uppercase text-center transition-all border border-gray-100">{m.nome_completo}</a>
+                <a key={m.id} href={`/pescador/${encodeURIComponent(m.nome_completo)}`} className="bg-gray-50 hover:bg-black hover:text-yellow-400 p-3 rounded-lg text-[9px] font-black uppercase text-center transition-all border border-gray-100 flex items-center justify-between">
+                  <span>{m.nome_completo}</span>
+                  <span className="text-[8px] opacity-60">{m.sexo === 'Feminino' ? '👩' : '👨'}</span>
+                </a>
               ))}
             </div>
           )}
@@ -162,7 +191,13 @@ export default function Home() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {listaRecordistas.map((item) => (
-                <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-yellow-400 transition-all hover:scale-[1.02]">
+                <div key={item.id} className="bg-white rounded-2xl overflow-hidden shadow-xl border-2 border-yellow-400 transition-all hover:scale-[1.02] relative">
+                  
+                  {/* TAG DE CATEGORIA EM DESTAQUE */}
+                  <div className={`absolute top-3 left-3 px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-wider text-white shadow-xl z-10 ${item.sexo === 'Feminino' ? 'bg-pink-600' : 'bg-blue-600'}`}>
+                    {item.sexo === 'Feminino' ? '👑 Categoria Feminina' : '🏆 Categoria Masculina'}
+                  </div>
+
                   <div className="relative h-64 bg-gray-200">
                     <img src={item.url_foto_captura} className="w-full h-full object-cover" alt="Troféu" />
                     <div className="absolute bottom-3 right-3 bg-black text-yellow-400 px-5 py-2 rounded-full font-black text-2xl border-2 border-yellow-400 shadow-2xl">{item.tamanho_cm}cm</div>
@@ -173,7 +208,7 @@ export default function Home() {
                        <span className="text-xs font-black text-yellow-600 uppercase tracking-[0.2em]">{item.subespecie}</span>
                     </div>
                     <div className="pt-4 border-t border-gray-100">
-                      <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest">Pescador</p>
+                      <p className="text-[9px] font-black text-gray-400 uppercase mb-1 tracking-widest">Pescador(a)</p>
                       <a href={`/pescador/${encodeURIComponent(item.nome_pescador)}`} className="text-xl font-bold uppercase hover:text-yellow-600 leading-tight block mb-4">{item.nome_pescador}</a>
                       <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase">
                          <span>📍 {item.local_captura}</span>
