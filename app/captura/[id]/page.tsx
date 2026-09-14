@@ -1,224 +1,121 @@
 'use client'
 import React, { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
-import { supabase } from '../../../lib/supabase'
+import { supabase } from '@/lib/supabase'
 
-export default function DetalheCaptura() {
+export default function CertificadoCaptura() {
   const { id } = useParams()
-  const [registro, setRegistro] = useState<any>(null)
+  const [captura, setCaptura] = useState<any>(null)
+  const [pescador, setPescador] = useState<any>(null)
+  const [posicao, setPosicao] = useState<number>(1)
   const [loading, setLoading] = useState(true)
-  const [posicao, setPosicao] = useState<number>(0)
-  
-  // Sociais
-  const [meuPerfil, setMeuPerfil] = useState<any>(null)
-  const [loginAberto, setLoginAberto] = useState(false)
-  const [comentarios, setComentarios] = useState<any[]>([])
-  const [novoComentario, setNovoComentario] = useState('')
-  const [showTrocaSenha, setShowTrocaSenha] = useState(false)
-  const [novaSenha, setNovaSenha] = useState('')
-  const [confirmarSenha, setConfirmarSenha] = useState('')
-
-  // Funções de Padronização
-  const normalizar = (texto: any) => {
-    return String(texto || '')
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-  }
-
-  const normalizarModalidade = (val: any) => {
-    const limpo = normalizar(val)
-    if (!limpo || limpo === 'null' || limpo === 'undefined' || limpo === 'absoluto') {
-      return 'absoluto'
-    }
-    return limpo
-  }
-
-  const converterTamanho = (valor: any) => {
-    if (!valor) return 0
-    const limpo = String(valor).replace(',', '.').replace(/[^0-9.]/g, '')
-    return parseFloat(limpo) || 0
-  }
 
   useEffect(() => {
-    async function carregar() {
+    async function carregarCertificado() {
+      if (!id) return
+      setLoading(true)
+
+      // 1. Puxa os dados da captura
       const { data: cap } = await supabase.from('recordes').select('*').eq('id', id).single()
-      
+
       if (cap) {
-        setRegistro(cap)
-        
-        // Busca todos para comparar o ranking
-        const { data: todos } = await supabase.from('recordes').select('id, tamanho_cm, grupo_especie, subespecie, modalidade_tipo')
+        setCaptura(cap)
 
-        if (todos && todos.length > 0) {
-          const mesmaCategoria = todos.filter(item => 
-            normalizar(item.grupo_especie) === normalizar(cap.grupo_especie) &&
-            normalizar(item.subespecie) === normalizar(cap.subespecie) &&
-            normalizarModalidade(item.modalidade_tipo) === normalizarModalidade(cap.modalidade_tipo)
-          )
+        // 2. Puxa o pescador para conferir o gênero
+        const { data: pes } = await supabase.from('pescadores').select('*').eq('id', cap.pescador_id).single()
+        const sexoPescador = pes?.sexo || 'Masculino'
+        setPescador({ ...pes, sexo: sexoPescador })
 
-          const ordenados = mesmaCategoria.sort((a, b) => converterTamanho(b.tamanho_cm) - converterTamanho(a.tamanho_cm))
+        // 3. Calcula a posição exata no ranking DENTRO DA CATEGORIA DE GÊNERO
+        const { data: todosRecordes } = await supabase
+          .from('recordes')
+          .select('*')
+          .eq('grupo_especie', cap.grupo_especie)
+          .eq('subespecie', cap.subespecie)
+          .or('status.eq.aprovado,status.is.null')
+          .order('tamanho_cm', { ascending: false })
+
+        if (todosRecordes) {
+          // Puxa todos os pescadores envolvidos para filtrar por gênero
+          const idsPescadores = todosRecordes.map(r => r.pescador_id).filter(Boolean)
+          const { data: listaPes } = await supabase.from('pescadores').select('id, sexo').in('id', idsPescadores)
           
-          const index = ordenados.findIndex(item => String(item.id) === String(cap.id))
-          setPosicao(index !== -1 ? index + 1 : 1)
-        } else {
-          setPosicao(1)
+          const mapSex: Record<string, string> = {}
+          listaPes?.forEach(p => { mapSex[p.id] = p.sexo || 'Masculino' })
+
+          // Filtra do ranking apenas peixes do mesmo gênero
+          const rankingGenero = todosRecordes.filter(r => (mapSex[r.pescador_id] || 'Masculino') === sexoPescador)
+          
+          // Acha o índice do peixe atual
+          const idx = rankingGenero.findIndex(r => r.id === cap.id)
+          if (idx !== -1) setPosicao(idx + 1)
         }
       }
-      
-      const sessaoLocal = localStorage.getItem('tr_sessao')
-      if (sessaoLocal) setMeuPerfil(JSON.parse(sessaoLocal))
-      
-      carregarComentarios()
       setLoading(false)
     }
-    carregar()
+    carregarCertificado()
   }, [id])
 
-  async function carregarComentarios() {
-    const { data } = await supabase.from('comentarios').select('*').eq('captura_id', id).order('created_at', { ascending: true })
-    if (data) setComentarios(data)
-  }
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Emitindo Certificado...</div>
+  if (!captura) return <div className="min-h-screen bg-black flex items-center justify-center text-white font-black uppercase">Captura não encontrada.</div>
 
-  async function loginPescador(e: any) {
-    e.preventDefault()
-    const { data } = await supabase.from('pescadores').select('*').eq('nome_completo', e.target.nome.value).eq('senha', e.target.senha.value).single()
-    if (data) {
-      if (data.primeiro_login) { setMeuPerfil(data); setLoginAberto(false); setShowTrocaSenha(true); }
-      else { localStorage.setItem('tr_sessao', JSON.stringify(data)); setMeuPerfil(data); setLoginAberto(false); }
-    } else { alert("Acesso negado!") }
-  }
-
-  async function atualizarSenha(e: any) {
-    e.preventDefault()
-    if (novaSenha !== confirmarSenha) return alert("As senhas não batem!")
-    const { error } = await supabase.from('pescadores').update({ senha: novaSenha, primeiro_login: false }).eq('id', meuPerfil.id)
-    if (!error) {
-      const pAtual = { ...meuPerfil, senha: novaSenha, primeiro_login: false }
-      localStorage.setItem('tr_sessao', JSON.stringify(pAtual)); setMeuPerfil(pAtual); setShowTrocaSenha(false);
-    }
-  }
-
-  async function postarComentario() {
-    if (!novoComentario.trim()) return
-    const { error } = await supabase.from('comentarios').insert([{ captura_id: id, pescador_id: meuPerfil.id, nome_pescador: meuPerfil.nome_completo, texto: novoComentario }])
-    if (!error) { setNovoComentario(''); carregarComentarios(); }
-  }
-
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-yellow-400 font-black uppercase italic">Sincronizando Pódio...</div>
-  if (!registro) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Captura inexistente.</div>
+  const sexoTexto = pescador?.sexo === 'Feminino' ? 'Feminino' : 'Masculino'
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-2 md:p-10 flex flex-col items-center font-sans pb-40 text-black">
-      
-      {/* CERTIFICADO */}
-      <div className="bg-white w-full max-w-5xl border-[12px] border-double border-yellow-500 p-4 md:p-12 shadow-[0_0_60px_rgba(0,0,0,1)] relative overflow-hidden mb-10">
-        <header className="text-center border-b-2 border-gray-100 pb-8 relative z-10 flex flex-col items-center">
-          <img src="/logo-tr.jpg" alt="Logo" className="h-24 w-auto rounded shadow-md mb-4" />
-          <h1 className="text-3xl md:text-5xl font-black uppercase italic text-black leading-none">Certificado de <span className="text-yellow-600">Captura</span></h1>
+    <div className="min-h-screen bg-zinc-950 text-white font-sans p-4 md:p-10 flex items-center justify-center">
+      <div className="max-w-3xl w-full bg-zinc-900 rounded-[3rem] p-6 md:p-12 border-4 border-yellow-400 shadow-[0_0_80px_rgba(234,179,8,0.15)] relative overflow-hidden">
+        
+        {/* SELO DE POSIÇÃO NO CERTIFICADO */}
+        <div className="absolute top-6 right-6 bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xs md:text-sm uppercase italic tracking-tighter shadow-2xl">
+          🏆 {posicao}º Lugar {captura.grupo_especie} {sexoTexto}
+        </div>
+
+        <header className="text-center mb-8 border-b border-zinc-800 pb-6">
+          <p className="text-yellow-400 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Certificado Oficial de Registro</p>
+          <h1 className="text-3xl md:text-5xl font-black uppercase italic text-white leading-none">Peixe<span className="text-yellow-400">Book</span></h1>
         </header>
 
-        <section className="text-center my-10 relative z-10">
-          {/* SELO DE POSIÇÃO DINÂMICO (COM MODALIDADE NO FIM) */}
-          <div className="inline-block bg-yellow-400 text-black px-8 py-3 rounded-full font-black uppercase italic text-sm shadow-xl mb-8 border-2 border-black">
-             🏆 {posicao}º Lugar em {registro.grupo_especie} {registro.subespecie} {registro.modalidade_tipo}
-          </div>
-          
-          <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em] mb-4">Certificamos com honra o pescador</p>
-          <h2 className="text-3xl md:text-6xl font-black uppercase italic text-black border-b-8 border-black inline-block px-8 pb-3 leading-tight">{registro.nome_pescador}</h2>
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 relative z-10">
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-gray-50 p-5 rounded-xl border-l-8 border-yellow-500 shadow-sm">
-              <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Categoria Oficial</p>
-              <p className="text-2xl font-black uppercase italic text-black leading-tight">{registro.grupo_especie}</p>
-              <p className="text-xs font-black text-yellow-600 uppercase tracking-widest">{registro.subespecie}</p>
-            </div>
-            <div className="bg-black text-yellow-400 p-6 rounded-2xl shadow-2xl text-center transform -rotate-1">
-              <p className="text-[10px] font-black uppercase text-white opacity-70 tracking-widest">Medida Comprovada</p>
-              <p className="text-6xl md:text-8xl font-black italic">{registro.tamanho_cm}<span className="text-3xl ml-2">CM</span></p>
-            </div>
-            <div className="space-y-4 pt-6 border-t border-gray-100 text-[11px] font-black uppercase">
-              <div className="flex items-center gap-3"><span className="text-yellow-500">📅</span> {new Date(registro.data_captura).toLocaleDateString('pt-BR')}</div>
-              <div className="flex items-center gap-3"><span className="text-yellow-500">📍</span> {registro.local_captura}</div>
-              <div className="flex items-center gap-3 text-yellow-600"><span className="text-yellow-600">⚓</span> {registro.modalidade_tipo}</div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center -rotate-1">
-              <img src={registro.url_foto_captura} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" alt="Foto do Peixe" />
-            </div>
-            <div className="bg-white p-2 shadow-xl border flex items-center justify-center rotate-1">
-              <img src={registro.url_foto_medicao} className="max-w-full h-auto max-h-[350px] object-contain rounded-sm" alt="Foto da Medição" />
-            </div>
+        {/* FOTO E TAMANHO */}
+        <div className="relative rounded-3xl overflow-hidden mb-8 border-2 border-zinc-800">
+          <img src={captura.url_foto_captura} className="w-full max-h-[450px] object-cover" alt="Troféu" />
+          <div className="absolute bottom-4 right-4 bg-black/90 text-yellow-400 px-6 py-3 rounded-2xl font-black text-3xl md:text-4xl border border-yellow-400/50 shadow-2xl">
+            {captura.tamanho_cm} CM
           </div>
         </div>
 
-        <footer className="mt-16 pt-8 border-t-2 border-gray-100 grid grid-cols-2 md:grid-cols-4 gap-6 text-center relative z-10 text-[9px] font-black text-black uppercase tracking-tighter">
-          <div><p className="text-gray-400 mb-1">Isca Artificial</p>{registro.isca || 'N/A'}</div>
-          <div><p className="text-gray-400 mb-1">Carretilha / Molinete</p>{registro.carretilha || 'N/A'}</div>
-          <div><p className="text-gray-400 mb-1">Vara de Pesca</p>{registro.vara || 'N/A'}</div>
-          <div><p className="text-gray-400 mb-1">Ambiente</p>{registro.modalidade_tipo}</div>
+        {/* DETALHES TÉCNICOS */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-black/50 p-6 rounded-3xl border border-zinc-800/80 mb-8 text-xs">
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Pescador(a)</p>
+            <p className="font-black uppercase text-sm text-yellow-400">{captura.nome_pescador}</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Espécie / Subespécie</p>
+            <p className="font-bold uppercase text-white">{captura.grupo_especie} ({captura.subespecie})</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Localização</p>
+            <p className="font-bold uppercase text-white">{captura.local_captura}</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Data do Registro</p>
+            <p className="font-bold uppercase text-white">{new Date(captura.data_captura).toLocaleDateString()}</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Categoria</p>
+            <p className="font-bold uppercase text-white">{captura.modalidade_tipo || 'Absoluto'}</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 font-black uppercase text-[9px]">Equipamento (Vara / Isca)</p>
+            <p className="font-bold uppercase text-white">{captura.vara || '---'} / {captura.isca || '---'}</p>
+          </div>
+        </div>
+
+        <footer className="flex justify-between items-center text-[9px] font-black uppercase text-zinc-600 border-t border-zinc-800 pt-6">
+          <span>Autenticado por Trilhas do Rio</span>
+          <span>PeixeBook ID: #{captura.id.substring(0, 8)}</span>
         </footer>
       </div>
-
-      {/* ÁREA SOCIAL */}
-      <section className="max-w-4xl w-full bg-zinc-900 rounded-3xl p-6 md:p-10 shadow-2xl border border-zinc-800">
-        <h3 className="text-xl font-black uppercase italic text-yellow-400 mb-8 flex items-center gap-3">💬 Resenha PeixeBook</h3>
-        <div className="space-y-6 mb-10">
-          {comentarios.map(c => (
-            <div key={c.id} className="bg-zinc-800/50 p-5 rounded-2xl border-l-4 border-yellow-500 shadow-md">
-              <p className="text-yellow-500 font-black text-[10px] uppercase tracking-widest mb-1">{c.nome_pescador}</p>
-              <p className="text-zinc-200 text-sm leading-relaxed">{c.texto}</p>
-            </div>
-          ))}
-          {comentarios.length === 0 && <p className="text-zinc-600 italic text-sm text-center py-6 border border-dashed border-zinc-800 rounded-xl">Seja o primeiro a comentar o troféu!</p>}
-        </div>
-
-        {meuPerfil && !meuPerfil.primeiro_login ? (
-          <div className="bg-zinc-800 p-6 rounded-2xl space-y-4 border border-zinc-700 shadow-inner">
-            <textarea value={novoComentario} onChange={e => setNovoComentario(e.target.value)} placeholder="Mande seu comentário..." className="w-full bg-zinc-950 border border-zinc-700 rounded-xl p-4 text-white text-sm h-24 resize-none outline-none focus:border-yellow-400" />
-            <div className="flex justify-between items-center">
-              <button onClick={() => { localStorage.removeItem('tr_sessao'); setMeuPerfil(null); }} className="text-[9px] text-zinc-500 font-black uppercase hover:text-red-500 transition-colors">Sair ({meuPerfil.nome_completo})</button>
-              <button onClick={postarComentario} className="bg-yellow-400 text-black px-8 py-3 rounded-full font-black uppercase text-xs hover:scale-105 transition-transform">Postar Comentário</button>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center p-10 bg-zinc-950 rounded-2xl border border-dashed border-zinc-800">
-            <button onClick={() => setLoginAberto(true)} className="bg-white text-black px-10 py-4 rounded-full font-black uppercase text-xs hover:bg-yellow-400 transition-all shadow-xl">Fazer Login para Comentar</button>
-          </div>
-        )}
-      </section>
-
-      {/* MODAIS */}
-      {loginAberto && (
-        <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <form onSubmit={loginPescador} className="bg-white p-8 rounded-3xl w-full max-w-sm shadow-2xl">
-            <h2 className="text-2xl font-black uppercase italic text-black mb-6">Membro do Clube</h2>
-            <input name="nome" placeholder="Nome Completo" required className="w-full p-4 border-2 rounded-xl mb-4 text-black font-black uppercase text-xs outline-none focus:border-yellow-400" />
-            <input name="senha" type="password" placeholder="Sua Senha" required className="w-full p-4 border-2 rounded-xl mb-6 text-black font-black text-xs outline-none focus:border-yellow-400" />
-            <button className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase shadow-xl">Entrar na Resenha</button>
-            <button type="button" onClick={() => setLoginAberto(false)} className="w-full text-zinc-400 font-black uppercase text-[9px] mt-4">Fechar</button>
-          </form>
-        </div>
-      )}
-
-      {showTrocaSenha && (
-        <div className="fixed inset-0 bg-black/98 backdrop-blur-xl z-[110] flex items-center justify-center p-4">
-          <form onSubmit={atualizarSenha} className="bg-white p-8 rounded-3xl w-full max-w-sm border-t-8 border-yellow-400 shadow-2xl text-black">
-            <h2 className="text-2xl font-black uppercase italic text-black mb-2 text-center">Cadastrar Senha</h2>
-            <p className="text-[10px] font-bold text-gray-400 uppercase mb-6 text-center">Para comentar, crie sua senha de acesso.</p>
-            <input type="password" placeholder="Nova Senha" required className="w-full p-4 border-2 rounded-xl mb-4 text-black font-bold outline-none" onChange={e => setNovaSenha(e.target.value)} />
-            <input type="password" placeholder="Confirme a Senha" required className="w-full p-4 border-2 rounded-xl mb-6 text-black font-bold outline-none" onChange={e => setConfirmarSenha(e.target.value)} />
-            <button className="w-full bg-yellow-400 text-black py-4 rounded-xl font-black uppercase shadow-xl hover:bg-black hover:text-yellow-400">Salvar e Entrar</button>
-          </form>
-        </div>
-      )}
-
-      <button onClick={() => window.history.back()} className="fixed bottom-8 right-8 bg-yellow-400 text-black px-8 py-4 rounded-full font-black uppercase italic text-sm shadow-2xl hover:bg-black hover:text-yellow-400 transition-all print:hidden z-50">← Voltar ao Ranking</button>
     </div>
   )
 }
