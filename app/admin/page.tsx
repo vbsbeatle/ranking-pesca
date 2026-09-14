@@ -12,14 +12,6 @@ export default function AdminPage() {
   const [capturaSelecionada, setCapturaSelecionada] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [msg, setMsg] = useState('')
-  const [grupo, setGrupo] = useState("Tucunaré")
-
-  const subMap: any = {
-    "Tucunaré": ["Açu", "Paca", "Azul", "Amarelo", "Borboleta", "Popoca", "Pinima", "Royal", "Xingu", "Tapajós", "Hibrido"],
-    "Dourado": ["Dourado comum", "Tabarana"],
-    "Traíra": ["Comum", "do Sudeste", "Intermediária", "Curupira", "Azul/do Sul", "Cazumbá"],
-    "Trairão": ["Comum", "Macrophthalmus", "Aimara"]
-  }
 
   useEffect(() => {
     async function checkUser() {
@@ -61,6 +53,7 @@ export default function AdminPage() {
       await supabase.from('pescadores').insert([{ 
         nome_completo: form.nome.value, 
         cidade: form.cidade.value, 
+        sexo: form.sexo.value, // NOVO CAMPO SALVO
         senha: form.senha_membro.value,
         url_foto: url 
       }])
@@ -144,11 +137,23 @@ export default function AdminPage() {
               </div>
             )}
 
-            {/* ABA CADASTRO DE PESCADOR */}
+            {/* ABA CADASTRO DE PESCADOR COM SELEÇÃO DE GÊNERO */}
             {aba === 'pescador' && (
               <form onSubmit={handlePescador} className="space-y-4">
-                <input name="nome" placeholder="Nome do Pescador" required className="w-full p-3 border-2 rounded font-bold text-black" />
+                <input name="nome" placeholder="Nome do Pescador(a)" required className="w-full p-3 border-2 rounded font-bold text-black" />
                 <input name="cidade" placeholder="Cidade Base" required className="w-full p-3 border-2 rounded font-bold text-black" />
+                
+                {/* NOVO CAMPO DE SELEÇÃO DE GÊNERO */}
+                <div className="flex gap-4 items-center bg-gray-50 p-3 border-2 rounded">
+                  <span className="text-xs font-black uppercase text-gray-500">Categoria/Sexo:</span>
+                  <label className="flex items-center gap-2 font-bold text-xs cursor-pointer">
+                    <input type="radio" name="sexo" value="Masculino" defaultChecked className="accent-yellow-400" /> Masculino
+                  </label>
+                  <label className="flex items-center gap-2 font-bold text-xs cursor-pointer">
+                    <input type="radio" name="sexo" value="Feminino" className="accent-yellow-400" /> Feminino
+                  </label>
+                </div>
+
                 <input name="senha_membro" placeholder="Senha de Acesso do Pescador" required className="w-full p-3 border-2 rounded font-bold text-black" />
                 <div className="p-4 bg-gray-50 border-2 border-dashed rounded text-center">
                    <p className="text-[10px] font-black uppercase text-gray-400 mb-2">Foto de Perfil</p>
@@ -163,7 +168,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* MODAL DETALHADO DA CAPTURA PARA APROVAÇÃO (FOTOS INTEIRAS SEM CORTE) */}
+      {/* MODAL DETALHADO DA CAPTURA PARA APROVAÇÃO */}
       {capturaSelecionada && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-4xl w-full p-6 md:p-8 space-y-6 my-8 border-t-8 border-yellow-400 text-black max-h-[95vh] overflow-y-auto">
@@ -191,7 +196,7 @@ export default function AdminPage() {
               <p><strong>Isca Artificial:</strong> {capturaSelecionada.isca}</p>
             </div>
 
-            {/* EXIBIÇÃO INTEGRAL DAS FOTOS (SENSÍVEL À ANÁLISE DE RÉGUA) */}
+            {/* EXIBIÇÃO INTEGRAL DAS FOTOS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="bg-zinc-900 p-3 rounded-2xl">
                 <p className="text-[10px] font-black uppercase text-yellow-400 mb-2 text-center">Foto com Pescador</p>
