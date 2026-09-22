@@ -65,14 +65,17 @@ export default function CertificadoCaptura() {
     <div className="min-h-screen bg-zinc-950 text-white font-sans p-4 md:p-10 flex items-center justify-center">
       <div className="max-w-4xl w-full bg-zinc-900 rounded-[3rem] p-6 md:p-12 border-4 border-yellow-400 shadow-[0_0_80px_rgba(234,179,8,0.15)] relative overflow-hidden my-8">
         
-        {/* SELO DE POSIÇÃO NO CERTIFICADO */}
-        <div className="sm:absolute top-6 right-6 bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xs md:text-sm uppercase italic tracking-tighter shadow-2xl mb-6 sm:mb-0 text-center inline-block">
-          🏆 {posicao}º Lugar {captura.grupo_especie} {sexoTexto}
-        </div>
-
-        <header className="text-center mb-8 border-b border-zinc-800 pb-6">
+        {/* HEADER COM LOGO E TAG DE COLOCAÇÃO CENTRALIZADA ABAIXO */}
+        <header className="text-center mb-8 border-b border-zinc-800 pb-6 flex flex-col items-center">
           <p className="text-yellow-400 text-[10px] font-black uppercase tracking-[0.4em] mb-1">Certificado Oficial de Registro</p>
-          <h1 className="text-3xl md:text-5xl font-black uppercase italic text-white leading-none">Peixe<span className="text-yellow-400">Book</span></h1>
+          <h1 className="text-3xl md:text-5xl font-black uppercase italic text-white leading-none mb-4">
+            Peixe<span className="text-yellow-400">Book</span>
+          </h1>
+
+          {/* TAG DE COLOCAÇÃO NO RANKING CENTRALIZADA */}
+          <div className="bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xs md:text-sm uppercase italic tracking-tighter shadow-2xl inline-block">
+            🏆 {posicao}º Lugar {captura.grupo_especie} {sexoTexto}
+          </div>
         </header>
 
         {/* FOTOS INTEIRAS DA CAPTURA E MEDIÇÃO NA RÉGUA */}
