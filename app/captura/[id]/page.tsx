@@ -63,10 +63,10 @@ export default function CertificadoCaptura() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white font-sans p-4 md:p-10 flex items-center justify-center">
-      <div className="max-w-3xl w-full bg-zinc-900 rounded-[3rem] p-6 md:p-12 border-4 border-yellow-400 shadow-[0_0_80px_rgba(234,179,8,0.15)] relative overflow-hidden">
+      <div className="max-w-4xl w-full bg-zinc-900 rounded-[3rem] p-6 md:p-12 border-4 border-yellow-400 shadow-[0_0_80px_rgba(234,179,8,0.15)] relative overflow-hidden my-8">
         
         {/* SELO DE POSIÇÃO NO CERTIFICADO */}
-        <div className="absolute top-6 right-6 bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xs md:text-sm uppercase italic tracking-tighter shadow-2xl">
+        <div className="sm:absolute top-6 right-6 bg-yellow-400 text-black px-6 py-2 rounded-full font-black text-xs md:text-sm uppercase italic tracking-tighter shadow-2xl mb-6 sm:mb-0 text-center inline-block">
           🏆 {posicao}º Lugar {captura.grupo_especie} {sexoTexto}
         </div>
 
@@ -75,12 +75,39 @@ export default function CertificadoCaptura() {
           <h1 className="text-3xl md:text-5xl font-black uppercase italic text-white leading-none">Peixe<span className="text-yellow-400">Book</span></h1>
         </header>
 
-        {/* FOTO E TAMANHO */}
-        <div className="relative rounded-3xl overflow-hidden mb-8 border-2 border-zinc-800">
-          <img src={captura.url_foto_captura} className="w-full max-h-[450px] object-cover" alt="Troféu" />
-          <div className="absolute bottom-4 right-4 bg-black/90 text-yellow-400 px-6 py-3 rounded-2xl font-black text-3xl md:text-4xl border border-yellow-400/50 shadow-2xl">
-            {captura.tamanho_cm} CM
+        {/* FOTOS INTEIRAS DA CAPTURA E MEDIÇÃO NA RÉGUA */}
+        <div className={`grid grid-cols-1 ${captura.url_foto_medicao ? 'md:grid-cols-2' : ''} gap-6 mb-8`}>
+          {/* FOTO DO PESCADOR COM PEIXE */}
+          <div className="bg-black/80 rounded-3xl overflow-hidden border-2 border-zinc-800 p-2 flex flex-col justify-between relative">
+            <p className="text-[10px] font-black uppercase text-yellow-400 mb-2 text-center tracking-wider">Foto da Captura</p>
+            <div className="flex items-center justify-center min-h-[250px] md:min-h-[350px]">
+              <img 
+                src={captura.url_foto_captura} 
+                className="w-full max-h-[400px] object-contain rounded-2xl" 
+                alt="Troféu com Pescador" 
+              />
+            </div>
+            <div className="bg-black/90 text-yellow-400 px-4 py-2 rounded-xl font-black text-xl border border-yellow-400/50 shadow-2xl text-center mt-2">
+              {captura.tamanho_cm} CM
+            </div>
           </div>
+
+          {/* FOTO DA MEDIÇÃO NA RÉGUA */}
+          {captura.url_foto_medicao && (
+            <div className="bg-black/80 rounded-3xl overflow-hidden border-2 border-zinc-800 p-2 flex flex-col justify-between relative">
+              <p className="text-[10px] font-black uppercase text-yellow-400 mb-2 text-center tracking-wider">Medição Oficial na Régua</p>
+              <div className="flex items-center justify-center min-h-[250px] md:min-h-[350px]">
+                <img 
+                  src={captura.url_foto_medicao} 
+                  className="w-full max-h-[400px] object-contain rounded-2xl" 
+                  alt="Peixe na Régua" 
+                />
+              </div>
+              <div className="bg-zinc-900 text-zinc-400 px-4 py-2 rounded-xl font-bold text-xs border border-zinc-700 text-center mt-2 uppercase">
+                Verificação de Arbitragem
+              </div>
+            </div>
+          )}
         </div>
 
         {/* DETALHES TÉCNICOS */}
