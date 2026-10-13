@@ -15,6 +15,7 @@ export default function AdminCampeonatos() {
   const [inscritosTorneio, setInscritosTorneio] = useState<any[]>([])
   const [aba, setAba] = useState('novo_camp')
   const [catsSelecionadas, setCatsSelecionadas] = useState<string[]>(['Tucunaré'])
+  const [permiteGeral, setPermiteGeral] = useState<boolean>(true)
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   
@@ -107,6 +108,7 @@ export default function AdminCampeonatos() {
       cota_min: parseInt(formData.cota_min), 
       cota_max: parseInt(formData.cota_max), 
       categorias: catsSelecionadas, 
+      permite_geral: permiteGeral,
       url_logo: formData.url_logo,
       status: 'ativo'
     }
@@ -117,6 +119,8 @@ export default function AdminCampeonatos() {
       await supabase.from('campeonatos').insert([dados]) 
     }
     setFormData({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
+    setCatsSelecionadas(['Tucunaré'])
+    setPermiteGeral(true)
     carregarDados()
   }
 
@@ -171,7 +175,6 @@ export default function AdminCampeonatos() {
   const campeonatosAtivos = campeonatos.filter(c => c.status !== 'finalizado')
   const campeonatosFinalizados = campeonatos.filter(c => c.status === 'finalizado')
 
-  // Filtra os inscritos para exibir apenas do torneio selecionado no formulário de inscrição
   const inscritosFiltrados = inscritosTorneio.filter(ins => 
     (ins.campeonato_id || ins.campeonato) === torneioInscricaoSel
   )
@@ -220,8 +223,20 @@ export default function AdminCampeonatos() {
                   <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Máxima</label><input type="number" placeholder="Máxima" value={formData.cota_max} onChange={e => setFormData({...formData, cota_max: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
                 </div>
 
-                <div className="p-4 bg-zinc-800 rounded-2xl">
-                   <p className="text-white text-[10px] font-black uppercase mb-3">Categorias:</p>
+                {/* MODALIDADE / CATEGORIA GERAL */}
+                <div className="p-4 bg-zinc-800 rounded-2xl space-y-3">
+                   <p className="text-white text-[10px] font-black uppercase">Configuração de Ranking:</p>
+                   <label className="flex items-center gap-3 text-xs text-yellow-400 font-bold cursor-pointer select-none">
+                     <input 
+                       type="checkbox" 
+                       checked={permiteGeral} 
+                       onChange={(e) => setPermiteGeral(e.target.checked)} 
+                       className="w-4 h-4 accent-yellow-400" 
+                     /> 
+                     Ativar Categoria Geral (Sacola)
+                   </label>
+
+                   <p className="text-white text-[10px] font-black uppercase pt-2">Espécies Permitidas:</p>
                    <div className="flex flex-wrap gap-4">
                      {['Tucunaré', 'Trairas', 'Dourado'].map(c => (
                        <label key={c} className="flex items-center gap-2 text-xs text-white cursor-pointer select-none">
@@ -373,14 +388,22 @@ export default function AdminCampeonatos() {
                           </div>
                           <div>
                             <p className="font-black uppercase italic text-sm leading-none mb-1">{c.nome}</p>
-                            <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">Cota Mín: {c.cota_min} | Máx: {c.cota_max} • {c.categorias?.join(' / ')}</p>
+                            <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">
+                              Cota Mín: {c.cota_min} | Máx: {c.cota_max} • {c.permite_geral !== false ? 'Geral + ' : ''}{c.categorias?.join(' / ')}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <button onClick={() => alterarStatusTorneio(c.id, 'finalizado')} className="px-3 py-2 bg-yellow-400 text-black text-[9px] font-black uppercase rounded-xl hover:bg-white transition-all">
                             🏁 Finalizar
                           </button>
-                          <button onClick={() => { setEditandoId(c.id); setFormData({ nome: c.nome, inicio: c.data_inicio, fim: c.data_fim, cota_min: String(c.cota_min), cota_max: String(c.cota_max), url_logo: c.url_logo || '' }); setCatsSelecionadas(c.categorias); setAba('novo_camp'); }} className="p-3 bg-zinc-800 rounded-xl hover:bg-yellow-400 hover:text-black transition-all">✏️</button>
+                          <button onClick={() => { 
+                            setEditandoId(c.id); 
+                            setFormData({ nome: c.nome, inicio: c.data_inicio, fim: c.data_fim, cota_min: String(c.cota_min), cota_max: String(c.cota_max), url_logo: c.url_logo || '' }); 
+                            setCatsSelecionadas(c.categorias || ['Tucunaré']); 
+                            setPermiteGeral(c.permite_geral !== false);
+                            setAba('novo_camp'); 
+                          }} className="p-3 bg-zinc-800 rounded-xl hover:bg-yellow-400 hover:text-black transition-all">✏️</button>
                           <button onClick={async () => { if(confirm("Apagar?")) { await supabase.from('campeonatos').delete().eq('id', c.id); carregarDados(); } }} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-xs">🗑️</button>
                         </div>
                       </div>
