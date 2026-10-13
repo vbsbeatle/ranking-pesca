@@ -1,309 +1,218 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
-export default function AdminCampeonatos() {
-  const [user, setUser] = useState<any>(null)
-  const [email, setEmail] = useState('')
-  const [senha, setSenha] = useState('')
-  const [loading, setLoading] = useState(false)
-  
-  // Estados do Dashboard
-  const [campeonatos, setCampeonatos] = useState<any[]>([])
-  const [pescadoresGerais, setPescadoresGerais] = useState<any[]>([])
-  const [capturasTorneio, setCapturasTorneio] = useState<any[]>([])
-  const [inscritosTorneio, setInscritosTorneio] = useState<any[]>([])
-  const [aba, setAba] = useState('novo_camp')
-  const [catsSelecionadas, setCatsSelecionadas] = useState<string[]>(['Tucunaré'])
-  const [editandoId, setEditandoId] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
-  
-  const [formData, setFormData] = useState({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
+export default function DetalheCampeonato() {
+  const { id } = useParams()
+  const [camp, setCamp] = useState<any>(null)
+  const [ranking, setRanking] = useState<any[]>([])
+  const [catAtiva, setCatAtiva] = useState('Geral (Sacola)')
+  const [bigFish, setBigFish] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [todosParticipantes, setTodosParticipantes] = useState<any[]>([])
+  const [todasCapturas, setTodasCapturas] = useState<any[]>([])
 
   useEffect(() => {
-    async function checkUser() {
-      const { data } = await supabase.auth.getUser()
-      if (data?.user) {
-        setUser(data.user)
-        carregarDados()
+    async function carregarTudo() {
+      const { data: c } = await supabase.from('campeonatos').select('*').eq('id', id).single()
+      if (!c) return
+      setCamp(c)
+
+      const { data: participantes } = await supabase.from('campeonato_participantes').select('*').eq('campeonato_id', id)
+      const { data: capturas } = await supabase.from('capturas_torneio').select('*').eq('campeonato_id', id)
+
+      if (participantes && capturas) {
+        setTodosParticipantes(participantes)
+        setTodasCapturas(capturas)
+        processarRanking(c, participantes, capturas, 'Geral (Sacola)')
       }
+      setLoading(false)
     }
-    checkUser()
-  }, [])
+    carregarTudo()
+  }, [id])
 
-  useEffect(() => {
-    if (user) carregarDados()
-  }, [aba])
+  function processarRanking(c: any, parts: any[], caps: any[], categoria: string) {
+    const lista = parts.map(p => {
+      let peixesFiltrados = []
 
-  async function carregarDados() {
-    const { data: c } = await supabase.from('campeonatos').select('*').order('created_at', { ascending: false })
-    const { data: p } = await supabase.from('pescadores').select('*').order('nome_completo')
-    const { data: cap } = await supabase.from('capturas_torneio').select('*').order('created_at', { ascending: false })
-    const { data: ins } = await supabase.from('campeonato_participantes').select('*')
-    
-    if (c) setCampeonatos(c)
-    if (p) setPescadoresGerais(p)
-    if (cap) setCapturasTorneio(cap)
-    if (ins) setInscritosTorneio(ins)
+      if (categoria === 'Geral (Sacola)') {
+        peixesFiltrados = caps
+          .filter(cap => cap.pescador_id === p.pescador_id || cap.pescador === p.pescador_id)
+          .sort((a, b) => b.tamanho_cm - a.tamanho_cm)
+      } else {
+        peixesFiltrados = caps
+          .filter(cap => (cap.pescador_id === p.pescador_id || cap.pescador === p.pescador_id) && cap.especie === categoria)
+          .sort((a, b) => b.tamanho_cm - a.tamanho_cm)
+      }
+
+      const peixesValidos = peixesFiltrados.slice(0, c.cota_max || 5)
+      const soma = peixesValidos.reduce((acc, cur) => acc + parseFloat(cur.tamanho_cm), 0)
+      
+      return { 
+        ...p, 
+        pontuacao: soma, 
+        qtd: peixesFiltrados.length, 
+        atingiuCota: peixesFiltrados.length >= (c.cota_min || 1),
+        detalhePeixes: peixesValidos 
+      }
+    })
+
+    // Ordenação com critério de desempate no peixe individual
+    const rankingOrdenado = lista.sort((a, b) => {
+      if (b.pontuacao !== a.pontuacao) {
+        return b.pontuacao - a.pontuacao
+      }
+
+      const maxPeixes = Math.max(a.detalhePeixes.length, b.detalhePeixes.length)
+      for (let k = 0; k < maxPeixes; k++) {
+        const tamA = a.detalhePeixes[k]?.tamanho_cm || 0
+        const tamB = b.detalhePeixes[k]?.tamanho_cm || 0
+        
+        if (tamB !== tamA) {
+          return tamB - tamA
+        }
+      }
+      return 0
+    })
+
+    setRanking(rankingOrdenado)
+
+    const capsFiltradas = categoria === 'Geral (Sacola)' ? caps : caps.filter(cap => cap.especie === categoria)
+    const maior = [...capsFiltradas].sort((a, b) => b.tamanho_cm - a.tamanho_cm)[0]
+    setBigFish(maior)
   }
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha })
-    if (error) alert("Erro: " + error.message)
-    else window.location.reload()
-    setLoading(false)
+  function mudarAba(novaCat: string) {
+    setCatAtiva(novaCat)
+    processarRanking(camp, todosParticipantes, todasCapturas, novaCat)
   }
 
-  // --- FUNÇÕES DE GESTÃO ---
-  async function handleUploadLogo(e: any) {
-    try {
-      setUploading(true)
-      const file = e.target.files[0]
-      if (!file) return
-      const filePath = `campeonatos/${Math.random()}.jpg`
-      await supabase.storage.from('logos').upload(filePath, file)
-      const { data } = supabase.storage.from('logos').getPublicUrl(filePath)
-      setFormData({ ...formData, url_logo: data.publicUrl })
-      alert("Logo carregada!")
-    } catch (err: any) { alert(err.message) } finally { setUploading(false) }
-  }
+  if (loading || !camp) return <div className="p-20 text-center font-black text-zinc-600 uppercase">Processando Placar Oficial...</div>
 
-  async function handleUploadPerfil(e: any, pescadorId: string) {
-    try {
-      const file = e.target.files[0]
-      if (!file) return
-      const fileName = `${Date.now()}-p`
-      await supabase.storage.from('fotos-pesca').upload(fileName, file)
-      const { data } = supabase.storage.from('fotos-pesca').getPublicUrl(fileName)
-      await supabase.from('pescadores').update({ url_foto: data.publicUrl }).eq('id', pescadorId)
-      alert("Foto do pescador atualizada!"); carregarDados();
-    } catch (err: any) { alert("Erro: " + err.message) }
-  }
-
-  async function handleSalvarCamp(e: any) {
-    e.preventDefault()
-    const dados = {
-      nome: formData.nome, 
-      data_inicio: formData.inicio, 
-      data_fim: formData.fim,
-      cota_min: parseInt(formData.cota_min), 
-      cota_max: parseInt(formData.cota_max), 
-      categorias: catsSelecionadas, 
-      url_logo: formData.url_logo
-    }
-    if (editandoId) { await supabase.from('campeonatos').update(dados).eq('id', editandoId); setEditandoId(null); }
-    else { await supabase.from('campeonatos').insert([dados]) }
-    setFormData({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
-    carregarDados()
-  }
-
-  async function deletarCaptura(id: string) {
-    if (confirm("Deseja realmente excluir este peixe do torneio?")) {
-      const { error } = await supabase.from('capturas_torneio').delete().eq('id', id)
-      if (!error) { alert("Captura removida!"); carregarDados(); }
-    }
-  }
-
-  async function removerInscricao(id: string) {
-    if (confirm("Deseja realmente desinscrever este pescador do torneio?")) {
-      const { error } = await supabase.from('campeonato_participantes').delete().eq('id', id)
-      if (!error) { alert("Pescador desinscrito com sucesso!"); carregarDados(); }
-      else { alert("Erro ao desinscrever: " + error.message) }
-    }
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-2xl w-full max-w-sm border-t-8 border-yellow-400 shadow-2xl text-black">
-          <h2 className="text-xl font-black uppercase italic mb-6 text-center tracking-tighter">Admin Campeonatos</h2>
-          <input type="email" placeholder="E-mail" className="w-full p-4 border-2 rounded-xl mb-4 font-bold outline-none" onChange={(e) => setEmail(e.target.value)} required />
-          <input type="password" placeholder="Senha" className="w-full p-4 border-2 rounded-xl mb-6 font-bold outline-none" onChange={(e) => setSenha(e.target.value)} required />
-          <button disabled={loading} className="w-full bg-black text-yellow-400 py-4 rounded-xl font-black uppercase">Entrar</button>
-        </form>
-      </div>
-    )
-  }
+  const abasDisponiveis = ['Geral (Sacola)', ...(camp.categorias || ['Tucunaré', 'Trairas', 'Dourado'])]
+  const isFinalizado = camp.status === 'finalizado'
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-8 font-sans pb-20">
-      <div className="max-w-6xl mx-auto">
-        <header className="flex justify-between items-center mb-10">
-          <h1 className="text-2xl font-black uppercase italic text-yellow-400 border-l-4 border-yellow-400 pl-4">Arena PeixeBook</h1>
-          <button onClick={() => { supabase.auth.signOut(); window.location.reload(); }} className="text-[10px] font-black uppercase text-zinc-600 hover:text-white">Logout</button>
-        </header>
+    <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-10 font-sans pb-40">
+      <header className="max-w-5xl mx-auto mb-10 border-b border-zinc-900 pb-8 flex flex-col items-center text-center">
+        {camp.url_logo && (
+          <img src={camp.url_logo} alt="Logo Torneio" className="h-24 md:h-32 w-auto mb-6 rounded-2xl shadow-2xl border-2 border-zinc-800" />
+        )}
+        <h1 className="text-4xl md:text-6xl font-black uppercase italic text-yellow-400 mb-2 leading-none">{camp.nome}</h1>
         
-        <div className="flex gap-2 mb-10 overflow-x-auto pb-4">
-          {[
-            { id: 'novo_camp', label: '🏆 Torneios' },
-            { id: 'inscricao', label: '📝 Inscrições' },
-            { id: 'lancar', label: '🎣 Lançar Peixe' },
-            { id: 'ver_peixes', label: '🗑️ Deletar Peixes' },
-            { id: 'pescadores', label: '👥 Pescadores' }
-          ].map((t) => (
-            <button key={t.id} onClick={() => setAba(t.id)} className={`px-6 py-2 rounded-full text-[10px] font-black uppercase border-2 whitespace-nowrap transition-all ${aba === t.id ? 'bg-yellow-400 text-black border-yellow-400' : 'border-zinc-800 text-zinc-500'}`}>
-              {t.label}
-            </button>
-          ))}
+        <div className="flex flex-wrap justify-center items-center gap-3 text-[9px] font-black text-zinc-500 uppercase tracking-widest mt-2">
+           <span>📅 {new Date(camp.data_inicio).toLocaleDateString()} a {new Date(camp.data_fim).toLocaleDateString()}</span>
+           <span>•</span>
+           <span className="text-yellow-600">🏆 Limite: {camp.cota_max || 5} Maiores Peixes</span>
+           {isFinalizado && (
+             <span className="bg-red-600 text-white px-3 py-1 rounded-full font-black text-[9px] uppercase tracking-wider ml-2 animate-pulse">
+               🏁 TORNEIO FINALIZADO
+             </span>
+           )}
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-5">
-            {aba === 'novo_camp' && (
-              <form onSubmit={handleSalvarCamp} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <input value={formData.nome} onChange={e => setFormData({...formData, nome: e.target.value})} placeholder="Nome do Torneio" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none" />
-                <div className="bg-zinc-800 p-6 rounded-2xl border-2 border-dashed border-zinc-700 text-center text-white">
-                  {formData.url_logo ? <img src={formData.url_logo} className="h-20 mx-auto rounded-lg mb-4" alt="Logo" /> : null}
-                  <label className="cursor-pointer text-[10px] font-black uppercase block hover:text-yellow-400">
-                    {uploading ? 'Aguarde...' : '📷 Carregar Logo'}
-                    <input type="file" accept="image/*" onChange={handleUploadLogo} className="hidden" />
-                  </label>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Início</label><input type="date" value={formData.inicio} onChange={e => setFormData({...formData, inicio: e.target.value})} className="p-3 rounded-xl font-bold bg-white" /></div>
-                  <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Fim</label><input type="date" value={formData.fim} onChange={e => setFormData({...formData, fim: e.target.value})} className="p-3 rounded-xl font-bold bg-white" /></div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Mínima</label><input type="number" placeholder="Mínima" value={formData.cota_min} onChange={e => setFormData({...formData, cota_min: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
-                  <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Máxima</label><input type="number" placeholder="Máxima" value={formData.cota_max} onChange={e => setFormData({...formData, cota_max: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
-                </div>
+      {/* ABAS DE CATEGORIA */}
+      <div className="max-w-5xl mx-auto flex justify-center gap-2 mb-10 overflow-x-auto pb-4">
+        {abasDisponiveis.map((cat: string) => (
+          <button key={cat} onClick={() => mudarAba(cat)} className={`px-6 py-3 rounded-full font-black uppercase text-xs border-2 whitespace-nowrap transition-all ${catAtiva === cat ? 'bg-yellow-400 text-black border-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 'border-zinc-800 text-zinc-500'}`}>
+            {cat}
+          </button>
+        ))}
+      </div>
 
-                <div className="p-4 bg-zinc-800 rounded-2xl">
-                   <p className="text-white text-[10px] font-black uppercase mb-3">Categorias:</p>
-                   <div className="flex flex-wrap gap-4">
-                     {['Tucunaré', 'Trairas', 'Dourado'].map(c => (
-                       <label key={c} className="flex items-center gap-2 text-xs text-white cursor-pointer select-none"><input type="checkbox" checked={catsSelecionadas.includes(c)} onChange={() => setCatsSelecionadas(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c])} className="w-4 h-4 accent-yellow-400" /> {c}</label>
-                     ))}
-                   </div>
-                </div>
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase italic shadow-lg">Salvar Torneio</button>
-              </form>
-            )}
+      <div className="max-w-5xl mx-auto">
+        {/* PÓDIO DEFINITIVO DOS CAMPEÕES (EXIBIDO QUANDO O TORNEIO ESTIVER FINALIZADO) */}
+        {isFinalizado && ranking.length >= 3 && (
+          <div className="mb-12 bg-zinc-900/80 p-8 rounded-[3rem] border-2 border-yellow-400/50 shadow-2xl">
+            <h2 className="text-center text-yellow-400 font-black uppercase italic tracking-widest text-sm mb-8">
+              👑 Pódio Definitivo - {catAtiva}
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+              
+              {/* 2º LUGAR (VICE-CAMPEÃO) */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-700 text-center order-2 md:order-1">
+                <span className="text-4xl block mb-2">🥈</span>
+                <p className="text-[10px] font-black uppercase text-zinc-400">Vice-Campeão</p>
+                <h3 className="text-lg font-black uppercase italic my-1">{ranking[1]?.nome_pescador}</h3>
+                <p className="text-2xl font-black text-yellow-400">{ranking[1]?.pontuacao.toFixed(1)} cm</p>
+              </div>
+
+              {/* 1º LUGAR (CAMPEÃO) */}
+              <div className="bg-gradient-to-b from-yellow-500/20 to-zinc-950 p-8 rounded-[2.5rem] border-2 border-yellow-400 text-center order-1 md:order-2 shadow-2xl -mt-4">
+                <span className="text-5xl block mb-2 animate-bounce">🥇</span>
+                <p className="text-[10px] font-black uppercase text-yellow-400 tracking-widest">Grandioso Campeão</p>
+                <h3 className="text-2xl font-black uppercase italic my-1 text-white">{ranking[0]?.nome_pescador}</h3>
+                <p className="text-4xl font-black text-yellow-400">{ranking[0]?.pontuacao.toFixed(1)} cm</p>
+              </div>
+
+              {/* 3º LUGAR */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-800 text-center order-3">
+                <span className="text-4xl block mb-2">🥉</span>
+                <p className="text-[10px] font-black uppercase text-zinc-500">3º Colocado</p>
+                <h3 className="text-lg font-black uppercase italic my-1">{ranking[2]?.nome_pescador}</h3>
+                <p className="text-2xl font-black text-yellow-400">{ranking[2]?.pontuacao.toFixed(1)} cm</p>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* BIG FISH */}
+        {bigFish && (
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-1 rounded-[40px] mb-12 shadow-xl">
+            <div className="bg-zinc-950 rounded-[36px] p-6 flex justify-between items-center px-10">
+               <div>
+                  <p className="text-yellow-500 text-[10px] font-black uppercase tracking-widest">
+                    👑 Maior Peixe {catAtiva === 'Geral (Sacola)' ? 'do Torneio' : `de ${catAtiva}`}
+                  </p>
+                  <h3 className="text-2xl font-black uppercase italic">{bigFish.nome_pescador}</h3>
+               </div>
+               <div className="text-right">
+                  <p className="text-5xl font-black italic text-white">{bigFish.tamanho_cm} CM</p>
+                  <p className="text-[9px] text-zinc-500 font-bold uppercase">{bigFish.especie}</p>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TABELA DE RANKING COMPLETA */}
+        <div className="space-y-4">
+          <h2 className="text-zinc-600 font-black uppercase italic mb-6">
+            {isFinalizado ? 'Classificação Final' : 'Classificação Em Andamento'}: {catAtiva}
+          </h2>
+          {ranking.map((r, i) => {
+            const nomePescador = r.nome_pescador || todosParticipantes.find(p => p.id === r.pescador_id || p.id === r.pescador)?.nome_completo || 'Pescador';
             
-            {aba === 'inscricao' && (
-              <form onSubmit={async (e:any) => {
-                e.preventDefault();
-                const pSel = pescadoresGerais.find(x => x.id === e.target.pescador_id.value);
-                const campId = e.target.camp_id.value;
-                if (!pSel || !campId) return;
-
-                await supabase.from('campeonato_participantes').insert([{ 
-                  campeonato_id: campId, 
-                  pescador_id: pSel.id, 
-                  nome_pescador: pSel.nome_completo 
-                }]);
-                alert("Inscrito!"); 
-                carregarDados();
-              }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <select name="camp_id" className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
-                  <option value="">Selecione o Torneio</option>
-                  {campeonatos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <select name="pescador_id" className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
-                  <option value="">Selecione o Pescador</option>
-                  {pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
-                </select>
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase">Vincular Pescador</button>
-              </form>
-            )}
-
-            {aba === 'lancar' && (
-              <form onSubmit={async (e:any) => {
-                e.preventDefault();
-                const f = e.target;
-                const p = pescadoresGerais.find(x => x.id === f.pescador_id.value)
-                await supabase.from('capturas_torneio').insert([{ campeonato_id: f.camp_id.value, pescador_id: p.id, nome_pescador: p.nome_completo, especie: f.especie.value, tamanho_cm: parseFloat(f.tamanho.value) }]);
-                alert("Peixe Registrado!"); f.reset(); carregarDados();
-              }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <select name="camp_id" className="w-full p-4 rounded-2xl font-bold bg-white">{campeonatos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}</select>
-                <select name="pescador_id" className="w-full p-4 rounded-2xl font-bold bg-white">{pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}</select>
-                <select name="especie" className="w-full p-4 rounded-2xl font-bold bg-white"><option value="Tucunaré">Tucunaré</option><option value="Trairas">Trairas</option><option value="Dourado">Dourado</option></select>
-                <input name="tamanho" type="number" step="0.1" placeholder="CM" className="w-full p-4 rounded-2xl font-bold bg-white" />
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase italic">Lançar Captura</button>
-              </form>
-            )}
-          </div>
-
-          <div className="lg:col-span-7">
-             {aba === 'inscricao' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Pescadores Inscritos</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {inscritosTorneio.map(ins => {
-                      // BUSCA INTELIGENTE DE SEGURANÇA: Se a coluna de nome falhar, ele cruza com a lista geral de pescadores
-                      const nomeTorneio = campeonatos.find(c => c.id === ins.campeonato_id || c.id === ins.campeonato)?.nome || 'Torneio';
-                      const nomePescador = ins.nome_pescador || pescadoresGerais.find(p => p.id === ins.pescador_id || p.id === ins.pescador)?.nome_completo || 'Pescador Desconhecido';
+            return (
+              <div key={r.id} className={`p-6 rounded-[35px] flex flex-col sm:flex-row sm:items-center justify-between border-2 gap-4 transition-all ${i === 0 ? 'bg-zinc-900 border-yellow-400 shadow-2xl' : 'bg-zinc-900/40 border-zinc-900'}`}>
+                 <div className="flex items-start gap-6">
+                    <span className={`text-4xl font-black italic mt-1 ${i === 0 ? 'text-yellow-400' : 'text-zinc-800'}`}>{i + 1}º</span>
+                    <div>
+                      <a href={`/campeonatos/${id}/pescador/${r.pescador_id || r.pescador}`} className="text-xl font-black uppercase italic hover:text-yellow-400 block transition-colors">{nomePescador}</a>
                       
-                      return (
-                        <div key={ins.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                          <div>
-                            <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">{nomeTorneio}</p>
-                            <p className="font-black uppercase italic text-sm">{nomePescador}</p>
-                          </div>
-                          <button onClick={() => removerInscricao(ins.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm transition-all">🗑️</button>
+                      {r.detalhePeixes && r.detalhePeixes.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {r.detalhePeixes.map((peixe: any, idx: number) => (
+                            <span key={idx} className="bg-zinc-900 px-3 py-1 rounded-xl border border-zinc-800 text-[10px] font-bold text-zinc-400 uppercase tracking-tighter">
+                              {peixe.especie.substring(0,3)}. {peixe.tamanho_cm}cm
+                            </span>
+                          ))}
                         </div>
-                      )
-                    })}
-                    {inscritosTorneio.length === 0 && <p className="text-center py-10 text-zinc-700 italic font-black uppercase text-xs">Nenhum pescador inscrito em torneios.</p>}
-                  </div>
-                </div>
-             ) : aba === 'ver_peixes' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Gerenciar Peixes do Torneio</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {capturasTorneio.map(cap => (
-                      <div key={cap.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">{campeonatos.find(c => c.id === cap.campeonato_id)?.nome || 'Torneio'}</p>
-                          <p className="font-black uppercase italic text-sm">{cap.nome_pescador}</p>
-                          <p className="text-[9px] font-bold text-zinc-600 uppercase">{cap.especie} • {cap.tamanho_cm}cm</p>
-                        </div>
-                        <button onClick={() => deletarCaptura(cap.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm">🗑️</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-             ) : aba === 'pescadores' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6">Fotos de Perfil</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {pescadoresGerais.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                        <div className="flex items-center gap-4">
-                          <img src={p.url_foto || 'https://via.placeholder.com/50'} className="h-10 w-10 rounded-xl object-cover" />
-                          <span className="text-xs font-bold uppercase">{p.nome_completo}</span>
-                        </div>
-                        <label className="bg-zinc-800 px-4 py-2 rounded-xl text-[8px] font-black uppercase cursor-pointer hover:bg-yellow-400">Mudar Foto<input type="file" accept="image/*" onChange={(e) => handleUploadPerfil(e, p.id)} className="hidden" /></label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-             ) : (
-                <div className="space-y-4">
-                  <h3 className="font-black uppercase italic text-[10px] tracking-widest text-zinc-500 mb-4">Lista de Torneios Ativos</h3>
-                  {campeonatos.map(c => (
-                    <div key={c.id} className="bg-zinc-900 p-5 rounded-[2rem] flex items-center justify-between border border-zinc-800">
-                      <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center border border-zinc-700">
-                           {c.url_logo ? <img src={c.url_logo} className="h-full w-full object-cover" /> : <span className="text-xl">🏆</span>}
-                        </div>
-                        <div>
-                          <p className="font-black uppercase italic text-sm leading-none mb-1">{c.nome}</p>
-                          <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">Cota Mín: {c.cota_min} | Máx: {c.cota_max} • {c.categorias?.join(' / ')}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { setEditandoId(c.id); setFormData({ nome: c.nome, inicio: c.data_inicio, fim: c.data_fim, cota_min: String(c.cota_min), cota_max: String(c.cota_max), url_logo: c.url_logo || '' }); setCatsSelecionadas(c.categorias); setAba('novo_camp'); }} className="p-3 bg-zinc-800 rounded-xl hover:bg-yellow-400 transition-all">✏️</button>
-                        <button onClick={async () => { if(confirm("Apagar?")) { await supabase.from('campeonatos').delete().eq('id', c.id); carregarDados(); } }} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-xs">🗑️</button>
-                      </div>
+                      ) : (
+                        <p className="text-[10px] text-zinc-600 uppercase font-black mt-1">Nenhum peixe computado</p>
+                      )}
                     </div>
-                  ))}
-                </div>
-             )}
-          </div>
+                 </div>
+                 
+                 <div className="text-left sm:text-right border-t border-zinc-900 sm:border-0 pt-4 sm:pt-0">
+                    <p className="text-[9px] font-black text-zinc-600 uppercase tracking-widest">Soma Total</p>
+                    <p className="text-4xl font-black italic text-white">{r.pontuacao.toFixed(1)} <span className="text-xs text-zinc-600 not-italic">CM</span></p>
+                 </div>
+              </div>
+            )
+          })}
         </div>
       </div>
     </div>
