@@ -19,8 +19,9 @@ export default function AdminCampeonatos() {
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   
-  // Estado para filtrar inscritos na aba de Inscrições
+  // Estados de seleção de torneio para as abas "Inscrições" e "Lançar Peixe"
   const [torneioInscricaoSel, setTorneioInscricaoSel] = useState<string>('')
+  const [torneioLancarSel, setTorneioLancarSel] = useState<string>('')
 
   const [formData, setFormData] = useState({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
 
@@ -48,8 +49,9 @@ export default function AdminCampeonatos() {
     if (c) {
       setCampeonatos(c)
       const ativo = c.find(item => item.status !== 'finalizado')
-      if (ativo && !torneioInscricaoSel) {
-        setTorneioInscricaoSel(ativo.id)
+      if (ativo) {
+        if (!torneioInscricaoSel) setTorneioInscricaoSel(ativo.id)
+        if (!torneioLancarSel) setTorneioLancarSel(ativo.id)
       }
     }
     if (p) setPescadoresGerais(p)
@@ -175,9 +177,21 @@ export default function AdminCampeonatos() {
   const campeonatosAtivos = campeonatos.filter(c => c.status !== 'finalizado')
   const campeonatosFinalizados = campeonatos.filter(c => c.status === 'finalizado')
 
+  // Filtro de inscritos para a lista ao lado na aba "Inscrições"
   const inscritosFiltrados = inscritosTorneio.filter(ins => 
     (ins.campeonato_id || ins.campeonato) === torneioInscricaoSel
   )
+
+  // Filtro de inscritos para o select na aba "Lançar Peixe"
+  const inscritosLancarFiltrados = inscritosTorneio.filter(ins => 
+    (ins.campeonato_id || ins.campeonato) === torneioLancarSel
+  )
+
+  // Busca o torneio selecionado na aba "Lançar Peixe" para obter suas categorias dinâmicas
+  const torneioLancarObj = campeonatos.find(c => c.id === torneioLancarSel)
+  const especiesDoTorneio = torneioLancarObj?.categorias && torneioLancarObj.categorias.length > 0 
+    ? torneioLancarObj.categorias 
+    : ['Tucunaré', 'Trairas', 'Dourado']
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-8 font-sans pb-20">
@@ -223,7 +237,6 @@ export default function AdminCampeonatos() {
                   <div className="flex flex-col"><label className="text-[9px] uppercase font-bold text-zinc-500 mb-1 ml-2">Cota Máxima</label><input type="number" placeholder="Máxima" value={formData.cota_max} onChange={e => setFormData({...formData, cota_max: e.target.value})} className="p-4 rounded-2xl font-bold bg-white outline-none" /></div>
                 </div>
 
-                {/* MODALIDADE / CATEGORIA GERAL */}
                 <div className="p-4 bg-zinc-800 rounded-2xl space-y-3">
                    <p className="text-white text-[10px] font-black uppercase">Configuração de Ranking:</p>
                    <label className="flex items-center gap-3 text-xs text-yellow-400 font-bold cursor-pointer select-none">
@@ -285,23 +298,64 @@ export default function AdminCampeonatos() {
               <form onSubmit={async (e:any) => {
                 e.preventDefault();
                 const f = e.target;
-                const p = pescadoresGerais.find(x => x.id === f.pescador_id.value)
-                await supabase.from('capturas_torneio').insert([{ campeonato_id: f.camp_id.value, pescador_id: p.id, nome_pescador: p.nome_completo, especie: f.especie.value, tamanho_cm: parseFloat(f.tamanho.value) }]);
+                const pId = f.pescador_id.value;
+                const p = pescadoresGerais.find(x => x.id === pId);
+                const pNome = p ? p.nome_completo : (inscritosTorneio.find(i => i.pescador_id === pId || i.pescador === pId)?.nome_pescador || 'Pescador');
+
+                await supabase.from('capturas_torneio').insert([{ 
+                  campeonato_id: torneioLancarSel, 
+                  pescador_id: pId, 
+                  nome_pescador: pNome, 
+                  especie: f.especie.value, 
+                  tamanho_cm: parseFloat(f.tamanho.value) 
+                }]);
                 alert("Peixe Registrado!"); 
-                f.reset(); 
+                f.tamanho.value = ''; 
                 carregarDados();
               }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <select name="camp_id" required className="w-full p-4 rounded-2xl font-bold bg-white">
+                
+                {/* SELECT DE TORNEIO PARA LANÇAMENTO */}
+                <select 
+                  value={torneioLancarSel} 
+                  onChange={(e) => setTorneioLancarSel(e.target.value)} 
+                  required 
+                  className="w-full p-4 rounded-2xl font-bold bg-white outline-none"
+                >
                   <option value="">Selecione o Torneio</option>
                   {campeonatosAtivos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                 </select>
-                <select name="pescador_id" required className="w-full p-4 rounded-2xl font-bold bg-white">
-                  <option value="">Selecione o Pescador</option>
-                  {pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
+
+                {/* SELECT DE PESCADOR FILTRADO APENAS PELOS INSCRITOS DO TORNEIO SELECIONADO */}
+                <select name="pescador_id" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
+                  <option value="">
+                    {!torneioLancarSel 
+                      ? 'Selecione um torneio primeiro' 
+                      : inscritosLancarFiltrados.length === 0 
+                      ? 'Nenhum inscrito neste torneio' 
+                      : 'Selecione o Pescador Inscrito'}
+                  </option>
+                  {inscritosLancarFiltrados.map(ins => {
+                    const pId = ins.pescador_id || ins.pescador;
+                    const pNome = ins.nome_pescador || pescadoresGerais.find(p => p.id === pId)?.nome_completo || 'Pescador';
+                    return <option key={ins.id} value={pId}>{pNome}</option>
+                  })}
                 </select>
-                <select name="especie" className="w-full p-4 rounded-2xl font-bold bg-white"><option value="Tucunaré">Tucunaré</option><option value="Trairas">Trairas</option><option value="Dourado">Dourado</option></select>
-                <input name="tamanho" type="number" step="0.1" placeholder="CM" required className="w-full p-4 rounded-2xl font-bold bg-white" />
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase italic">Lançar Captura</button>
+
+                {/* ESPÉCIES CONFIGURADAS PARA ESTE TORNEIO */}
+                <select name="especie" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
+                  {especiesDoTorneio.map((esp: string) => (
+                    <option key={esp} value={esp}>{esp}</option>
+                  ))}
+                </select>
+
+                <input name="tamanho" type="number" step="0.1" placeholder="CM (ex: 45.5)" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none" />
+                
+                <button 
+                  disabled={!torneioLancarSel || inscritosLancarFiltrados.length === 0} 
+                  className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase italic shadow-lg disabled:opacity-50"
+                >
+                  Lançar Captura
+                </button>
               </form>
             )}
           </div>
