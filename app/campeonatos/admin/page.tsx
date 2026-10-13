@@ -18,6 +18,9 @@ export default function AdminCampeonatos() {
   const [editandoId, setEditandoId] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   
+  // NOVO: Estado para filtrar a lista pelo torneio selecionado na aba de Inscrições
+  const [torneioInscricaoSel, setTorneioInscricaoSel] = useState<string>('')
+
   const [formData, setFormData] = useState({ nome: '', inicio: '', fim: '', cota_min: '1', cota_max: '5', url_logo: '' })
 
   useEffect(() => {
@@ -41,7 +44,14 @@ export default function AdminCampeonatos() {
     const { data: cap } = await supabase.from('capturas_torneio').select('*').order('created_at', { ascending: false })
     const { data: ins } = await supabase.from('campeonato_participantes').select('*')
     
-    if (c) setCampeonatos(c)
+    if (c) {
+      setCampeonatos(c)
+      // Seleciona automaticamente o primeiro torneio ativo por padrão se nenhum estiver selecionado
+      const ativo = c.find(item => item.status !== 'finalizado')
+      if (ativo && !torneioInscricaoSel) {
+        setTorneioInscricaoSel(ativo.id)
+      }
+    }
     if (p) setPescadoresGerais(p)
     if (cap) setCapturasTorneio(cap)
     if (ins) setInscritosTorneio(ins)
@@ -144,6 +154,11 @@ export default function AdminCampeonatos() {
   const campeonatosAtivos = campeonatos.filter(c => c.status !== 'finalizado')
   const campeonatosFinalizados = campeonatos.filter(c => c.status === 'finalizado')
 
+  // Filtra os inscritos para exibir apenas do torneio atualmente selecionado
+  const inscritosFiltrados = inscritosTorneio.filter(ins => 
+    (ins.campeonato_id || ins.campeonato) === torneioInscricaoSel
+  )
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white p-4 md:p-8 font-sans pb-20">
       <div className="max-w-6xl mx-auto">
@@ -204,7 +219,7 @@ export default function AdminCampeonatos() {
               <form onSubmit={async (e:any) => {
                 e.preventDefault();
                 const pSel = pescadoresGerais.find(x => x.id === e.target.pescador_id.value);
-                const campId = e.target.camp_id.value;
+                const campId = torneioInscricaoSel;
                 if (!pSel || !campId) return;
 
                 await supabase.from('campeonato_participantes').insert([{ 
@@ -215,154 +230,5 @@ export default function AdminCampeonatos() {
                 alert("Inscrito!"); 
                 carregarDados();
               }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <select name="camp_id" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
-                  <option value="">Selecione o Torneio</option>
-                  {campeonatosAtivos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <select name="pescador_id" required className="w-full p-4 rounded-2xl font-bold bg-white outline-none">
-                  <option value="">Selecione o Pescador</option>
-                  {pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
-                </select>
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase">Vincular Pescador</button>
-              </form>
-            )}
-
-            {aba === 'lancar' && (
-              <form onSubmit={async (e:any) => {
-                e.preventDefault();
-                const f = e.target;
-                const p = pescadoresGerais.find(x => x.id === f.pescador_id.value)
-                await supabase.from('capturas_torneio').insert([{ campeonato_id: f.camp_id.value, pescador_id: p.id, nome_pescador: p.nome_completo, especie: f.especie.value, tamanho_cm: parseFloat(f.tamanho.value) }]);
-                alert("Peixe Registrado!"); f.reset(); carregarDados();
-              }} className="bg-zinc-900 p-8 rounded-[2.5rem] space-y-4 text-black border border-zinc-800">
-                <select name="camp_id" required className="w-full p-4 rounded-2xl font-bold bg-white">
-                  <option value="">Selecione o Torneio</option>
-                  {campeonatosAtivos.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                </select>
-                <select name="pescador_id" required className="w-full p-4 rounded-2xl font-bold bg-white">
-                  <option value="">Selecione o Pescador</option>
-                  {pescadoresGerais.map(p => <option key={p.id} value={p.id}>{p.nome_completo}</option>)}
-                </select>
-                <select name="especie" className="w-full p-4 rounded-2xl font-bold bg-white"><option value="Tucunaré">Tucunaré</option><option value="Trairas">Trairas</option><option value="Dourado">Dourado</option></select>
-                <input name="tamanho" type="number" step="0.1" placeholder="CM" required className="w-full p-4 rounded-2xl font-bold bg-white" />
-                <button className="w-full bg-yellow-400 text-black p-5 rounded-2xl font-black uppercase italic">Lançar Captura</button>
-              </form>
-            )}
-          </div>
-
-          <div className="lg:col-span-7">
-             {aba === 'inscricao' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Pescadores Inscritos</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {inscritosTorneio.map(ins => {
-                      const nomeTorneio = campeonatos.find(c => c.id === ins.campeonato_id || c.id === ins.campeonato)?.nome || 'Torneio';
-                      const nomePescador = ins.nome_pescador || pescadoresGerais.find(p => p.id === ins.pescador_id || p.id === ins.pescador)?.nome_completo || 'Pescador Desconhecido';
-                      
-                      return (
-                        <div key={ins.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                          <div>
-                            <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">{nomeTorneio}</p>
-                            <p className="font-black uppercase italic text-sm">{nomePescador}</p>
-                          </div>
-                          <button onClick={() => removerInscricao(ins.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm transition-all">🗑️</button>
-                        </div>
-                      )
-                    })}
-                    {inscritosTorneio.length === 0 && <p className="text-center py-10 text-zinc-700 italic font-black uppercase text-xs">Nenhum pescador inscrito em torneios.</p>}
-                  </div>
-                </div>
-             ) : aba === 'ver_peixes' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6 text-yellow-400">Gerenciar Peixes do Torneio</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {capturasTorneio.map(cap => (
-                      <div key={cap.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">{campeonatos.find(c => c.id === cap.campeonato_id)?.nome || 'Torneio'}</p>
-                          <p className="font-black uppercase italic text-sm">{cap.nome_pescador}</p>
-                          <p className="text-[9px] font-bold text-zinc-600 uppercase">{cap.especie} • {cap.tamanho_cm}cm</p>
-                        </div>
-                        <button onClick={() => deletarCaptura(cap.id)} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-sm">🗑️</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-             ) : aba === 'pescadores' ? (
-                <div className="bg-zinc-900 p-8 rounded-[2.5rem] border border-zinc-800 shadow-2xl">
-                  <h3 className="font-black uppercase italic text-sm mb-6">Fotos de Perfil</h3>
-                  <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
-                    {pescadoresGerais.map(p => (
-                      <div key={p.id} className="flex items-center justify-between p-4 bg-black/40 rounded-2xl border border-zinc-800">
-                        <div className="flex items-center gap-4">
-                          <img src={p.url_foto || 'https://via.placeholder.com/50'} className="h-10 w-10 rounded-xl object-cover" />
-                          <span className="text-xs font-bold uppercase">{p.nome_completo}</span>
-                        </div>
-                        <label className="bg-zinc-800 px-4 py-2 rounded-xl text-[8px] font-black uppercase cursor-pointer hover:bg-yellow-400">Mudar Foto<input type="file" accept="image/*" onChange={(e) => handleUploadPerfil(e, p.id)} className="hidden" /></label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-             ) : (
-                <div className="space-y-8">
-                  {/* TORNEIOS ATIVOS */}
-                  <div className="space-y-4">
-                    <h3 className="font-black uppercase italic text-[10px] tracking-widest text-yellow-400 mb-4 flex items-center gap-2">
-                      <span className="h-2 w-2 rounded-full bg-green-500 animate-ping"></span> Torneios Em Andamento ({campeonatosAtivos.length})
-                    </h3>
-                    {campeonatosAtivos.map(c => (
-                      <div key={c.id} className="bg-zinc-900 p-5 rounded-[2rem] flex items-center justify-between border border-zinc-800">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-zinc-800 rounded-xl overflow-hidden flex items-center justify-center border border-zinc-700">
-                             {c.url_logo ? <img src={c.url_logo} className="h-full w-full object-cover" /> : <span className="text-xl">🏆</span>}
-                          </div>
-                          <div>
-                            <p className="font-black uppercase italic text-sm leading-none mb-1">{c.nome}</p>
-                            <p className="text-[8px] text-zinc-600 font-bold uppercase tracking-tighter">Cota Mín: {c.cota_min} | Máx: {c.cota_max} • {c.categorias?.join(' / ')}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => alterarStatusTorneio(c.id, 'finalizado')} className="px-3 py-2 bg-yellow-400 text-black text-[9px] font-black uppercase rounded-xl hover:bg-white transition-all">
-                            🏁 Finalizar
-                          </button>
-                          <button onClick={() => { setEditandoId(c.id); setFormData({ nome: c.nome, inicio: c.data_inicio, fim: c.data_fim, cota_min: String(c.cota_min), cota_max: String(c.cota_max), url_logo: c.url_logo || '' }); setCatsSelecionadas(c.categorias); setAba('novo_camp'); }} className="p-3 bg-zinc-800 rounded-xl hover:bg-yellow-400 hover:text-black transition-all">✏️</button>
-                          <button onClick={async () => { if(confirm("Apagar?")) { await supabase.from('campeonatos').delete().eq('id', c.id); carregarDados(); } }} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-xs">🗑️</button>
-                        </div>
-                      </div>
-                    ))}
-                    {campeonatosAtivos.length === 0 && <p className="text-zinc-600 text-xs italic font-bold">Nenhum torneio em andamento.</p>}
-                  </div>
-
-                  {/* TORNEIOS FINALIZADOS */}
-                  <div className="space-y-4 pt-6 border-t border-zinc-800">
-                    <h3 className="font-black uppercase italic text-[10px] tracking-widest text-zinc-500 mb-4">
-                      🏁 Torneios Finalizados ({campeonatosFinalizados.length})
-                    </h3>
-                    {campeonatosFinalizados.map(c => (
-                      <div key={c.id} className="bg-zinc-900/50 p-5 rounded-[2rem] flex items-center justify-between border border-zinc-800/80 opacity-75 hover:opacity-100 transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-zinc-800/50 rounded-xl overflow-hidden flex items-center justify-center border border-zinc-800">
-                             {c.url_logo ? <img src={c.url_logo} className="h-full w-full object-cover grayscale" /> : <span className="text-xl">🏆</span>}
-                          </div>
-                          <div>
-                            <p className="font-black uppercase italic text-sm leading-none mb-1 text-zinc-400">{c.nome}</p>
-                            <span className="bg-zinc-800 text-yellow-500 text-[8px] font-black uppercase px-2 py-0.5 rounded-full">Encerrado</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => alterarStatusTorneio(c.id, 'ativo')} className="px-3 py-2 bg-zinc-800 text-zinc-300 text-[9px] font-black uppercase rounded-xl hover:bg-yellow-400 hover:text-black transition-all">
-                            🔓 Reabrir
-                          </button>
-                          <button onClick={async () => { if(confirm("Apagar?")) { await supabase.from('campeonatos').delete().eq('id', c.id); carregarDados(); } }} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-600 text-xs">🗑️</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-             )}
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
+                <select 
+                  value={tor
