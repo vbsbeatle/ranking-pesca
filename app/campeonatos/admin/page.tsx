@@ -94,7 +94,7 @@ export default function AdminCampeonatos() {
       alert("Foto do pescador atualizada!")
       carregarDados()
     } catch (err: any) { 
-      alert("Erro: " + error.message) 
+      alert("Erro: " + err.message) 
     }
   }
 
