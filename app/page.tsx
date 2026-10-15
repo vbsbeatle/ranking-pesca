@@ -103,6 +103,9 @@ export default function Home() {
           <a href="/ranking-lista" className="bg-yellow-400 text-black px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-black text-center hover:bg-black hover:text-yellow-400 transition-all">
             📊 Ranking Completo
           </a>
+          <a href="/campeonatos" className="bg-black text-yellow-400 px-6 py-3 rounded-full font-black uppercase italic text-[10px] shadow-lg border-2 border-yellow-400 text-center hover:bg-yellow-400 hover:text-black transition-all">
+            🏆 Torneios
+          </a>
         </div>
 
         {/* ATALHOS RÁPIDOS */}
